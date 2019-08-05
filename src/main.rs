@@ -39,15 +39,13 @@ impl Cpu {
         self.sound_timer = 0;
     }
 
+    // Load the rom into memory, with the 0x200 offset
     pub fn load_rom(&mut self, file: String) -> io::Result<()> {
         let rom = File::open(file)?;
-        //let mut buffer: [u8; 1] = [0; 1];
-        //rom.read(&mut buffer)?; // Read into buffer
-        //println!("{:X}", buffer[0]);
         let mut i = 0;
         for b in rom.bytes() {
             self.memory[0x200 + i] = b.unwrap();
-            i = i + 1;
+            i += 1;
         }
 
         Ok(())
@@ -57,7 +55,7 @@ impl Cpu {
     // and increments program counter
     pub fn read_word(&mut self) -> u16 {
         //TODO: Look into ByteOrder crate
-        let w: u16 = ((self.memory[self.pc] as u16) << 8) | (self.memory[self.pc + 1] as u16);
+        let w: u16 = (u16::from(self.memory[self.pc]) << 8) | u16::from(self.memory[self.pc + 1]);
         self.pc += 2;
         w
     }
