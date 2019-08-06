@@ -2,6 +2,8 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 
+use crate::fonts::FONT_SET;
+
 pub struct Cpu {
     // Memory
     pub memory: [u8; 4096],
@@ -25,7 +27,6 @@ pub struct Cpu {
 }
 impl Cpu {
     pub fn initialize(&mut self) {
-        //TODO Load font data into ram
         self.pc = 0x200; // Starts at 0x200 because 0x00 to 0x1FF is other data
         self.opcode = 0x00;
         self.i = 0x00;
@@ -38,6 +39,21 @@ impl Cpu {
 
         self.delay_timer = 0;
         self.sound_timer = 0;
+
+        self.load_fonts();
+    }
+
+    pub fn dump_ram(&mut self) {
+        for (i, r) in self.memory.iter().enumerate() {
+            println!("{:X}: {:X}", i, r);
+        }
+    }
+
+    // Loads to font set into ram
+    fn load_fonts(&mut self) {
+        for (i, f) in FONT_SET.iter().enumerate() {
+            self.memory[i] = *f;
+        }
     }
 
     // Load the rom into memory, with the 0x200 offset

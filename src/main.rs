@@ -1,4 +1,5 @@
 mod cpu;
+mod fonts;
 
 use std::io;
 
@@ -18,10 +19,11 @@ fn main() -> io::Result<()> {
         sp: 0,
     };
     cpu.initialize();
-
     cpu.load_rom("./data/PONG".to_string())?;
 
     cpu.tick();
+
+    cpu.dump_ram();
 
     Ok(())
 }
