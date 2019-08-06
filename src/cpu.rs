@@ -25,7 +25,8 @@ pub struct Cpu {
 }
 impl Cpu {
     pub fn initialize(&mut self) {
-        self.pc = 0x200;
+        //TODO Load font data into ram
+        self.pc = 0x200; // Starts at 0x200 because 0x00 to 0x1FF is other data
         self.opcode = 0x00;
         self.i = 0x00;
 
@@ -57,8 +58,32 @@ impl Cpu {
     }
 
     // TODO: Output state control for sound/graphics
+    // TODO: Read keypad on each tick
     pub fn tick(&mut self) {
-        println!("{:X}", self.read_word());
+        let opcode = self.read_word();
+        self.run_opcode(opcode);
         self.pc += 2;
+    }
+
+    fn run_opcode(&mut self, opcode: u16) {
+        // Break the opcode into its distinct parts so we can determine what
+        // to do with what and where
+        let nibbles = (
+            (opcode & 0xF000) >> 12 as u8,
+            (opcode & 0x0F00) >> 8 as u8,
+            (opcode & 0x00F0) >> 4 as u8,
+            (opcode & 0x000F) as u8,
+        );
+        let nnn = (opcode & 0x0FFF) as usize;
+        let kk = (opcode & 0x00FF) as u8;
+        let x = nibbles.1 as usize;
+        let y = nibbles.2 as usize;
+        let n = nibbles.3 as usize;
+
+        println!("Running opcode: {:X}", opcode);
+        println!("Nibbles: {:?}", nibbles);
+        println!("nnn:{} / kk:{} / x,y,n: {},{},{}", nnn, kk, x, y, n);
+
+        //TODO: Run the opcode
     }
 }
