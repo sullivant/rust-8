@@ -11,7 +11,7 @@ pub struct Cpu {
 
     // Registers
     pub v: [u8; 16],
-    pub i: u8,     // Index register
+    pub i: u16,    // Index register
     pub pc: usize, // Program Counter
 
     // Array of graphics pixels ( 64 x 32 )
@@ -29,12 +29,14 @@ impl Cpu {
     pub fn initialize(&mut self) {
         self.pc = 0x200; // Starts at 0x200 because 0x00 to 0x1FF is other data
         self.opcode = 0x00;
+
+        // Registers
         self.i = 0x00;
+        self.v = [0; 16];
 
         self.gfx = [0; (64 * 32)];
         self.stack = [0; 16];
         self.sp = 0;
-        self.v = [0; 16];
         self.memory = [0; 4096];
 
         self.delay_timer = 0;
@@ -43,6 +45,7 @@ impl Cpu {
         self.load_fonts();
     }
 
+    #[allow(dead_code)]
     pub fn dump_ram(&mut self) {
         for (i, r) in self.memory.iter().enumerate() {
             println!("{:X}: {:X}", i, r);
