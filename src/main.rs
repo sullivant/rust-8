@@ -23,7 +23,5 @@ fn main() -> io::Result<()> {
 
     cpu.tick();
 
-    cpu.dump_ram();
-
     Ok(())
 }
