@@ -4,6 +4,12 @@ use std::io::prelude::*;
 
 use crate::fonts::FONT_SET;
 
+enum ProgramCounter {
+    Next,
+    Skip,
+    Jump(usize),
+}
+
 pub struct Cpu {
     // Memory
     pub memory: [u8; 4096],
@@ -52,6 +58,12 @@ impl Cpu {
         }
     }
 
+    #[allow(dead_code)]
+    pub fn dump_regs(&mut self) {
+        println!("Registers:");
+        println!("v: {:?}", self.v);
+    }
+
     // Loads to font set into ram
     fn load_fonts(&mut self) {
         for (i, f) in FONT_SET.iter().enumerate() {
@@ -81,7 +93,6 @@ impl Cpu {
     pub fn tick(&mut self) {
         let opcode = self.read_word();
         self.run_opcode(opcode);
-        self.pc += 2;
     }
 
     fn run_opcode(&mut self, opcode: u16) {
@@ -100,9 +111,31 @@ impl Cpu {
         let n = nibbles.3 as usize;
 
         println!("Running opcode: {:X}", opcode);
-        println!("Nibbles: {:?}", nibbles);
-        println!("nnn:{} / kk:{} / x,y,n: {},{},{}", nnn, kk, x, y, n);
+        println!("  Nibbles: {:?}", nibbles);
+        println!("  nnn:{} / kk:{} / x,y,n: {},{},{}", nnn, kk, x, y, n);
 
-        //TODO: Run the opcode
+        //After each runcode we need to update our program counter so we can read
+        //a specific opcode out of ram.  Sometimes it's just "the next one", sometimes
+        //it's a jump, or a return, etc.
+        //
+        //Therefore each opcode's function will return either "next", "skip", or "jump"
+        //perfect use of an Enum here.
+
+        let pc_change: ProgramCounter = match nibbles {
+            (0x06, _, _, _) => self.op_6xkk(x, kk), // Puts value kk into register Vx
+            _ => ProgramCounter::Next,
+        };
+
+        match pc_change {
+            ProgramCounter::Next => self.pc += 2,
+            ProgramCounter::Skip => self.pc += 4,
+            ProgramCounter::Jump(a) => self.pc = a,
+        }
+    }
+
+    // Vx = kk
+    fn op_6xkk(&mut self, x: usize, kk: u8) -> ProgramCounter {
+        self.v[x] = kk;
+        ProgramCounter::Next
     }
 }
