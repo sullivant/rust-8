@@ -21,7 +21,10 @@ fn main() -> io::Result<()> {
     cpu.initialize();
     cpu.load_rom("./data/PONG".to_string())?;
 
-    cpu.tick();
+    for _i in 1..5 {
+        cpu.tick();
+        cpu.dump_regs();
+    }
 
     Ok(())
 }
