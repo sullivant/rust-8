@@ -28,8 +28,8 @@ pub struct Cpu {
     pub sound_timer: u8,
 
     // Stack and stack pointer
-    pub stack: [u8; 16],
-    pub sp: u8,
+    pub stack: [usize; 16],
+    pub sp: usize,
 }
 impl Cpu {
     pub fn initialize(&mut self) {
@@ -60,8 +60,7 @@ impl Cpu {
 
     #[allow(dead_code)]
     pub fn dump_regs(&mut self) {
-        println!("Registers:");
-        println!("v: {:?}", self.v);
+        println!("  v: {:?}", self.v);
     }
 
     // Loads to font set into ram
@@ -122,15 +121,37 @@ impl Cpu {
         //perfect use of an Enum here.
 
         let pc_change: ProgramCounter = match nibbles {
-            (0x06, _, _, _) => self.op_6xkk(x, kk), // Puts value kk into register Vx
+            // Skipping 0NNN (Jump to machine code at location NNN)
+            (0x00, 0x00, 0x0E, 0x00) => self.op_00e0(), // Clears the screen
+            (0x00, 0x00, 0x0E, 0x0E) => self.op_00ee(), // Set PC to addr at top of stack and sub 1 from sp.
+            (0x01, _, _, _) => self.op_1nnn(nnn),       // PC Jumps to location at nnn
+            (0x06, _, _, _) => self.op_6xkk(x, kk),     // Puts value kk into register Vx
             _ => ProgramCounter::Next,
         };
 
         match pc_change {
             ProgramCounter::Next => self.pc += 2,
             ProgramCounter::Skip => self.pc += 4,
-            ProgramCounter::Jump(a) => self.pc = a,
+            ProgramCounter::Jump(p) => self.pc = p,
         }
+    }
+
+    // Clear screen
+    // TODO: Implement graphics
+    fn op_00e0(&mut self) -> ProgramCounter {
+        ProgramCounter::Next
+    }
+
+    // Jump program counter to address at stack[sp] then subtract 1 from sp
+    fn op_00ee(&mut self) -> ProgramCounter {
+        let p = self.sp;
+        self.sp -= 1;
+        ProgramCounter::Jump(p)
+    }
+
+    // PC Jumps to location NNN
+    fn op_1nnn(&mut self, nnn: usize) -> ProgramCounter {
+        ProgramCounter::Jump(nnn)
     }
 
     // Vx = kk
