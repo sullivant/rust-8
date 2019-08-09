@@ -130,7 +130,8 @@ impl Cpu {
             (0x04, _, _, _) => self.op_4xkk(x, kk),     // Skip if Vx != kk
             (0x05, _, _, 0x00) => self.op_5xy0(x, y),   // Skip if Vx = Vy
             (0x06, _, _, _) => self.op_6xkk(x, kk),     // Puts value kk into register Vx
-            (0x07, _, _, _) => self.op_7xkk(x, kk),     // Sets Vx = Vx + kk with wraparound
+            (0x07, _, _, _) => self.op_7xkk(x, kk),     // Sets Vx = Vx + kk with overflow
+            (0x08, _, _, 0x00) => self.op_8xy0(x, y),   // Puts value Vx into Vx
             _ => ProgramCounter::Next,
         };
 
@@ -197,12 +198,18 @@ impl Cpu {
         ProgramCounter::Next
     }
 
-    // Set Vx = Vx + kk (wrap mod 256 if needed)
+    // Set Vx = Vx + kk (overflow mod 256 if needed)
     fn op_7xkk(&mut self, x: usize, kk: u8) -> ProgramCounter {
         let vx = self.v[x];
         let r: (u8, bool) = vx.overflowing_add(kk);
         self.v[x] = r.0;
 
+        ProgramCounter::Next
+    }
+
+    // Puts Vy into Vx
+    fn op_8xy0(&mut self, x: usize, y: usize) -> ProgramCounter {
+        self.v[y] = self.v[x];
         ProgramCounter::Next
     }
 }
