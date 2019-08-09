@@ -125,7 +125,12 @@ impl Cpu {
             (0x00, 0x00, 0x0E, 0x00) => self.op_00e0(), // Clears the screen
             (0x00, 0x00, 0x0E, 0x0E) => self.op_00ee(), // Set PC to addr at top of stack and sub 1 from sp.
             (0x01, _, _, _) => self.op_1nnn(nnn),       // PC Jumps to location at nnn
+            (0x02, _, _, _) => self.op_2nnn(nnn),       // Call subroutine at nnn
+            (0x03, _, _, _) => self.op_3xkk(x, kk),     // Skip if Vx = kk
+            (0x04, _, _, _) => self.op_4xkk(x, kk),     // Skip if Vx != kk
+            (0x05, _, _, 0x00) => self.op_5xy0(x, y),   // Skip if Vx = Vy
             (0x06, _, _, _) => self.op_6xkk(x, kk),     // Puts value kk into register Vx
+            (0x07, _, _, _) => self.op_7xkk(x, kk),     // Sets Vx = Vx + kk with wraparound
             _ => ProgramCounter::Next,
         };
 
@@ -154,9 +159,85 @@ impl Cpu {
         ProgramCounter::Jump(nnn)
     }
 
-    // Vx = kk
+    // Call subroutine at NNN
+    fn op_2nnn(&mut self, nnn: usize) -> ProgramCounter {
+        self.sp += 1;
+        self.stack[self.sp] = self.pc;
+        self.pc = nnn;
+        ProgramCounter::Next
+    }
+
+    // Skip next if Vx = kk
+    fn op_3xkk(&mut self, x: usize, kk: u8) -> ProgramCounter {
+        if self.v[x] == kk {
+            return ProgramCounter::Skip;
+        }
+        ProgramCounter::Next
+    }
+
+    // Skip next if Vx != kk
+    fn op_4xkk(&mut self, x: usize, kk: u8) -> ProgramCounter {
+        if self.v[x] != kk {
+            return ProgramCounter::Skip;
+        }
+        ProgramCounter::Next
+    }
+
+    // Skip next if Vx = Vy
+    fn op_5xy0(&mut self, x: usize, y: usize) -> ProgramCounter {
+        if self.v[x] == self.v[y] {
+            return ProgramCounter::Skip;
+        }
+        ProgramCounter::Next
+    }
+
+    // Set Vx = kk
     fn op_6xkk(&mut self, x: usize, kk: u8) -> ProgramCounter {
         self.v[x] = kk;
         ProgramCounter::Next
+    }
+
+    // Set Vx = Vx + kk (wrap mod 256 if needed)
+    fn op_7xkk(&mut self, x: usize, kk: u8) -> ProgramCounter {
+        let vx = self.v[x];
+        let r: (u8, bool) = vx.overflowing_add(kk);
+        self.v[x] = r.0;
+
+        ProgramCounter::Next
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_op_7xkk() {
+        let mut cpu = Cpu {
+            memory: [0; 4096],
+            opcode: 0,
+            v: [0; 16],
+            i: 0,
+            pc: 0,
+            gfx: [0; (64 * 32)],
+            delay_timer: 0,
+            sound_timer: 0,
+            stack: [0; 16],
+            sp: 0,
+        };
+        cpu.initialize();
+
+        let mut x: usize = 0;
+        assert_eq!(cpu.v[x], 0x00);
+
+        // Test add without overflow
+        cpu.op_7xkk(x, 0x01);
+        assert_eq!(cpu.v[x], 0x01);
+
+        // Test add with overflow on a different register
+        x = 1;
+        cpu.op_7xkk(x, u8::max_value());
+        assert_eq!(cpu.v[x], u8::max_value());
+        cpu.op_7xkk(x, 0x02);
+        assert_eq!(cpu.v[x], 0x01);
     }
 }
