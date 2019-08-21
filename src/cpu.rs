@@ -132,6 +132,8 @@ impl Cpu {
             (0x06, _, _, _) => self.op_6xkk(x, kk),     // Puts value kk into register Vx
             (0x07, _, _, _) => self.op_7xkk(x, kk),     // Sets Vx = Vx + kk with overflow
             (0x08, _, _, 0x00) => self.op_8xy0(x, y),   // Puts value Vx into Vx
+            (0x08, _, _, 0x01) => self.op_8xy1(x, y),   // Bitwise OR of Vx and Vy; result in Vx
+            (0x08, _, _, 0x02) => self.op_8xy2(x, y),   // Bitwise AND of Vx and Vy; result in Vx
             _ => ProgramCounter::Next,
         };
 
@@ -212,6 +214,18 @@ impl Cpu {
         self.v[y] = self.v[x];
         ProgramCounter::Next
     }
+
+    // Bitwise OR of Vx and Vy with result in Vx
+    fn op_8xy1(&mut self, x: usize, y: usize) -> ProgramCounter {
+        self.v[x] |= self.v[y];
+        ProgramCounter::Next
+    }
+
+    // Bitwise AND of Vx and Vy with result in Vx
+    fn op_8xy2(&mut self, x: usize, y: usize) -> ProgramCounter {
+        self.v[x] &= self.v[y];
+        ProgramCounter::Next
+    }
 }
 
 #[cfg(test)]
@@ -246,5 +260,59 @@ mod tests {
         assert_eq!(cpu.v[x], u8::max_value());
         cpu.op_7xkk(x, 0x02);
         assert_eq!(cpu.v[x], 0x01);
+    }
+
+    #[test]
+    fn test_op_8xy1() {
+        let mut cpu = Cpu {
+            memory: [0; 4096],
+            opcode: 0,
+            v: [0; 16],
+            i: 0,
+            pc: 0,
+            gfx: [0; (64 * 32)],
+            delay_timer: 0,
+            sound_timer: 0,
+            stack: [0; 16],
+            sp: 0,
+        };
+        cpu.initialize();
+
+        // set v[0] to b0001
+        cpu.v[0] = 0b0001;
+        // set v[1] to b1000
+        cpu.v[1] = 0b1000;
+
+        // Should bitwise OR v[0] and v[1]
+        cpu.op_8xy1(0, 1);
+
+        assert_eq!(cpu.v[0], 0b1001);
+    }
+
+    #[test]
+    fn test_op_8xy2() {
+        let mut cpu = Cpu {
+            memory: [0; 4096],
+            opcode: 0,
+            v: [0; 16],
+            i: 0,
+            pc: 0,
+            gfx: [0; (64 * 32)],
+            delay_timer: 0,
+            sound_timer: 0,
+            stack: [0; 16],
+            sp: 0,
+        };
+        cpu.initialize();
+
+        // set v[0] to b1001
+        cpu.v[0] = 0b1001;
+        // set v[1] to b1011
+        cpu.v[1] = 0b1011;
+
+        // Should bitwise OR v[0] and v[1]
+        cpu.op_8xy2(0, 1);
+
+        assert_eq!(cpu.v[0], 0b1001);
     }
 }
