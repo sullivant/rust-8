@@ -167,8 +167,7 @@ impl Cpu {
     fn op_2nnn(&mut self, nnn: usize) -> ProgramCounter {
         self.sp += 1;
         self.stack[self.sp] = self.pc;
-        self.pc = nnn;
-        ProgramCounter::Next
+        ProgramCounter::Jump(nnn)
     }
 
     // Skip next if Vx = kk
@@ -262,6 +261,82 @@ mod tests {
         cpu.run_opcode(0x00EE);
 
         assert_eq!(target, cpu.pc);
+    }
+
+    #[test]
+    fn test_op_1nnn() {
+        let mut cpu = Cpu {
+            memory: [0; 4096],
+            opcode: 0,
+            v: [0; 16],
+            i: 0,
+            pc: 0,
+            gfx: [0; (64 * 32)],
+            delay_timer: 0,
+            sound_timer: 0,
+            stack: [0; 16],
+            sp: 0,
+        };
+        cpu.initialize();
+
+        cpu.run_opcode(0x1201); // PC should jump to 0x201
+
+        assert_eq!(cpu.pc, 0x201);
+    }
+
+    #[test]
+    fn test_op_2nnn() {
+        let mut cpu = Cpu {
+            memory: [0; 4096],
+            opcode: 0,
+            v: [0; 16],
+            i: 0,
+            pc: 0,
+            gfx: [0; (64 * 32)],
+            delay_timer: 0,
+            sound_timer: 0,
+            stack: [0; 16],
+            sp: 0,
+        };
+        cpu.initialize();
+
+        cpu.run_opcode(0x2201);
+
+        // sp incremented
+        assert_eq!(cpu.sp, 1);
+
+        // pc stored on stack at cpu.sp
+        assert_eq!(cpu.stack[cpu.sp], 0x200);
+
+        // pc set to nnn
+        assert_eq!(cpu.pc, 0x201);
+    }
+
+    #[test]
+    fn test_op_3xkk() {
+        // Skip next if Vx = kk
+        let mut cpu = Cpu {
+            memory: [0; 4096],
+            opcode: 0,
+            v: [0; 16],
+            i: 0,
+            pc: 0,
+            gfx: [0; (64 * 32)],
+            delay_timer: 0,
+            sound_timer: 0,
+            stack: [0; 16],
+            sp: 0,
+        };
+        cpu.initialize();
+
+        let x: usize = 1;
+        cpu.v[x] = 3 as u8;
+
+        // After skip, cpu.pc should = 0x204
+        cpu.run_opcode(0x3103);
+        assert_eq!(cpu.pc, 0x204);
+
+        // Should not skip, cpu.pc should be 0x206
     }
 
     #[test]
