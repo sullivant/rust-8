@@ -153,7 +153,7 @@ impl Cpu {
 
     // Jump program counter to address at stack[sp] then subtract 1 from sp
     fn op_00ee(&mut self) -> ProgramCounter {
-        let p = self.sp;
+        let p = self.stack[self.sp];
         self.sp -= 1;
         ProgramCounter::Jump(p)
     }
@@ -238,6 +238,30 @@ impl Cpu {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_op_00ee() {
+        let mut cpu = Cpu {
+            memory: [0; 4096],
+            opcode: 0,
+            v: [0; 16],
+            i: 0,
+            pc: 0,
+            gfx: [0; (64 * 32)],
+            delay_timer: 0,
+            sound_timer: 0,
+            stack: [0; 16],
+            sp: 0,
+        };
+        cpu.initialize();
+
+        cpu.sp = 1;
+        cpu.stack[cpu.sp] = 0x201;
+
+        cpu.op_00ee();
+
+        assert_eq!(cpu.stack[cpu.sp], cpu.pc);
+    }
 
     #[test]
     fn test_op_7xkk() {
