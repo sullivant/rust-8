@@ -257,10 +257,11 @@ mod tests {
 
         cpu.sp = 1;
         cpu.stack[cpu.sp] = 0x201;
+        let target = cpu.stack[cpu.sp]; // where pc should end up
 
-        cpu.op_00ee();
+        cpu.run_opcode(0x00EE);
 
-        assert_eq!(cpu.stack[cpu.sp], cpu.pc);
+        assert_eq!(target, cpu.pc);
     }
 
     #[test]
