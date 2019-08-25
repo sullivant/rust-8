@@ -4,6 +4,8 @@ use std::io::prelude::*;
 
 use crate::fonts::FONT_SET;
 
+const OPCODE_SIZE: usize = 2;
+
 enum ProgramCounter {
     Next,
     Skip,
@@ -139,8 +141,8 @@ impl Cpu {
         };
 
         match pc_change {
-            ProgramCounter::Next => self.pc += 2,
-            ProgramCounter::Skip => self.pc += 4,
+            ProgramCounter::Next => self.pc += OPCODE_SIZE,
+            ProgramCounter::Skip => self.pc += OPCODE_SIZE * 2,
             ProgramCounter::Jump(p) => self.pc = p,
         }
     }
@@ -329,14 +331,18 @@ mod tests {
         };
         cpu.initialize();
 
+        let mut p = cpu.pc; // Starts at 0x200
         let x: usize = 1;
         cpu.v[x] = 3 as u8;
 
-        // After skip, cpu.pc should = 0x204
+        // After skip, cpu.pc should have moved up two opcode size
         cpu.run_opcode(0x3103);
-        assert_eq!(cpu.pc, 0x204);
+        assert_eq!(cpu.pc, p + (OPCODE_SIZE * 2));
 
-        // Should not skip, cpu.pc should be 0x206
+        // Should not skip, cpu.pc should be up one opcode size
+        p = cpu.pc;
+        cpu.run_opcode(0x3104); // 3 != 4
+        assert_eq!(cpu.pc, p + OPCODE_SIZE);
     }
 
     #[test]
