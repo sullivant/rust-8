@@ -346,6 +346,91 @@ mod tests {
     }
 
     #[test]
+    fn test_op_4xkk() {
+        // Skip next if Vx != kk
+        let mut cpu = Cpu {
+            memory: [0; 4096],
+            opcode: 0,
+            v: [0; 16],
+            i: 0,
+            pc: 0,
+            gfx: [0; (64 * 32)],
+            delay_timer: 0,
+            sound_timer: 0,
+            stack: [0; 16],
+            sp: 0,
+        };
+        cpu.initialize();
+
+        let mut p = cpu.pc; // Starts at 0x200
+        let x: usize = 1;
+        cpu.v[x] = 3 as u8;
+
+        // Should skip
+        cpu.run_opcode(0x4101); // 3 != 1
+        assert_eq!(cpu.pc, p + (OPCODE_SIZE * 2));
+
+        // Should not skip
+        p = cpu.pc;
+        cpu.run_opcode(0x4103); // 3 = 1
+        assert_eq!(cpu.pc, p + OPCODE_SIZE);
+    }
+
+    #[test]
+    fn test_op_5xy0() {
+        // Skip next if Vx = Vy
+        let mut cpu = Cpu {
+            memory: [0; 4096],
+            opcode: 0,
+            v: [0; 16],
+            i: 0,
+            pc: 0,
+            gfx: [0; (64 * 32)],
+            delay_timer: 0,
+            sound_timer: 0,
+            stack: [0; 16],
+            sp: 0,
+        };
+        cpu.initialize();
+
+        cpu.v[0] = 1;
+        cpu.v[1] = 1;
+
+        let mut pc = cpu.pc;
+        cpu.run_opcode(0x5010); // v[0] == v[1] ( should skip )
+        assert_eq!(cpu.pc, pc + (OPCODE_SIZE * 2));
+
+        pc = cpu.pc;
+        cpu.run_opcode(0x5020); // v[0] != v[2] ( should not skip )
+        assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+    }
+
+    #[test]
+    fn test_op_6xkk() {
+        // Set Vx = kk
+        let mut cpu = Cpu {
+            memory: [0; 4096],
+            opcode: 0,
+            v: [0; 16],
+            i: 0,
+            pc: 0,
+            gfx: [0; (64 * 32)],
+            delay_timer: 0,
+            sound_timer: 0,
+            stack: [0; 16],
+            sp: 0,
+        };
+        cpu.initialize();
+
+        let pc = cpu.pc;
+        cpu.run_opcode(0x61F0);
+
+        // Vx should = F0
+        assert_eq!(cpu.v[1], 0xF0);
+        assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+    }
+
+    #[test]
     fn test_op_7xkk() {
         let mut cpu = Cpu {
             memory: [0; 4096],
