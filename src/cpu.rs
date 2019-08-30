@@ -133,7 +133,7 @@ impl Cpu {
             (0x05, _, _, 0x00) => self.op_5xy0(x, y),   // Skip if Vx = Vy
             (0x06, _, _, _) => self.op_6xkk(x, kk),     // Puts value kk into register Vx
             (0x07, _, _, _) => self.op_7xkk(x, kk),     // Sets Vx = Vx + kk with overflow
-            (0x08, _, _, 0x00) => self.op_8xy0(x, y),   // Puts value Vx into Vx
+            (0x08, _, _, 0x00) => self.op_8xy0(x, y),   // Puts value Vx into Vy
             (0x08, _, _, 0x01) => self.op_8xy1(x, y),   // Bitwise OR of Vx and Vy; result in Vx
             (0x08, _, _, 0x02) => self.op_8xy2(x, y),   // Bitwise AND of Vx and Vy; result in Vx
             (0x08, _, _, 0x03) => self.op_8xy3(x, y),   // Bitwise XOR of Vx and Vy; result in Vx
@@ -459,6 +459,12 @@ mod tests {
         assert_eq!(cpu.v[x], u8::max_value());
         cpu.op_7xkk(x, 0x02);
         assert_eq!(cpu.v[x], 0x01);
+    }
+
+    #[test]
+    fn test_op_8xy0() {
+        // Puts value Vx into Vy
+        assert_eq!(1, 0);
     }
 
     #[test]
