@@ -464,7 +464,27 @@ mod tests {
     #[test]
     fn test_op_8xy0() {
         // Puts value Vx into Vy
-        assert_eq!(1, 0);
+        let mut cpu = Cpu {
+            memory: [0; 4096],
+            opcode: 0,
+            v: [0; 16],
+            i: 0,
+            pc: 0,
+            gfx: [0; (64 * 32)],
+            delay_timer: 0,
+            sound_timer: 0,
+            stack: [0; 16],
+            sp: 0,
+        };
+        cpu.initialize();
+
+        let p = cpu.pc;
+        cpu.v[0] = 0x05;
+        cpu.run_opcode(0x8010);
+
+        assert_eq!(0x05, cpu.v[0]);
+        assert_eq!(cpu.v[0], cpu.v[1]);
+        assert_eq!(cpu.pc, p + OPCODE_SIZE);
     }
 
     #[test]
