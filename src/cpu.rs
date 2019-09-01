@@ -137,6 +137,7 @@ impl Cpu {
             (0x08, _, _, 0x01) => self.op_8xy1(x, y),   // Bitwise OR of Vx and Vy; result in Vx
             (0x08, _, _, 0x02) => self.op_8xy2(x, y),   // Bitwise AND of Vx and Vy; result in Vx
             (0x08, _, _, 0x03) => self.op_8xy3(x, y),   // Bitwise XOR of Vx and Vy; result in Vx
+            (0x08, _, _, 0x04) => self.op_8xy4(x, y),   // Vx = Vx + Vy; if carry set VF
             _ => ProgramCounter::Next,
         };
 
@@ -232,6 +233,20 @@ impl Cpu {
     // Bitwise XOR of Vx and Vy with result in Vx
     fn op_8xy3(&mut self, x: usize, y: usize) -> ProgramCounter {
         self.v[x] ^= self.v[y];
+        ProgramCounter::Next
+    }
+
+    // Vx = Vx + Vy; if carry set VF
+    fn op_8xy4(&mut self, x: usize, y: usize) -> ProgramCounter {
+        let vx = self.v[x];
+        let oa: (u8, bool) = vx.overflowing_add(self.v[y]);
+        self.v[x] = oa.0;
+        if oa.1 {
+            self.v[0xf] = 1;
+        } else {
+            self.v[0xf] = 0;
+        }
+
         ProgramCounter::Next
     }
 }
@@ -446,19 +461,26 @@ mod tests {
         };
         cpu.initialize();
 
+        let mut pc = cpu.pc;
         let mut x: usize = 0;
         assert_eq!(cpu.v[x], 0x00);
 
         // Test add without overflow
-        cpu.op_7xkk(x, 0x01);
+        cpu.run_opcode(0x7001);
         assert_eq!(cpu.v[x], 0x01);
+        assert_eq!(cpu.pc, pc + OPCODE_SIZE);
 
         // Test add with overflow on a different register
         x = 1;
-        cpu.op_7xkk(x, u8::max_value());
+        pc = cpu.pc;
+        cpu.run_opcode(0x71ff);
         assert_eq!(cpu.v[x], u8::max_value());
-        cpu.op_7xkk(x, 0x02);
+        assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+
+        pc = cpu.pc;
+        cpu.run_opcode(0x7102);
         assert_eq!(cpu.v[x], 0x01);
+        assert_eq!(cpu.pc, pc + OPCODE_SIZE);
     }
 
     #[test]
@@ -508,10 +530,12 @@ mod tests {
         // set v[1] to b1000
         cpu.v[1] = 0b1000;
 
+        let pc = cpu.pc;
         // Should bitwise OR v[0] and v[1]
-        cpu.op_8xy1(0, 1);
+        cpu.run_opcode(0x8011);
 
         assert_eq!(cpu.v[0], 0b1001);
+        assert_eq!(cpu.pc, pc + OPCODE_SIZE);
     }
 
     #[test]
@@ -530,15 +554,17 @@ mod tests {
         };
         cpu.initialize();
 
+        let pc = cpu.pc;
         // set v[0] to b1001
         cpu.v[0] = 0b1001;
         // set v[1] to b1011
         cpu.v[1] = 0b1011;
 
         // Should bitwise OR v[0] and v[1]
-        cpu.op_8xy2(0, 1);
+        cpu.run_opcode(0x8012);
 
         assert_eq!(cpu.v[0], 0b1001);
+        assert_eq!(cpu.pc, pc + OPCODE_SIZE);
     }
 
     #[test]
@@ -557,14 +583,53 @@ mod tests {
         };
         cpu.initialize();
 
+        let pc = cpu.pc;
+
         // set v[0] to b1001
         cpu.v[0] = 0b1101;
         // set v[1] to b1011
         cpu.v[1] = 0b1011;
 
         // Should bitwise OR v[0] and v[1]
-        cpu.op_8xy3(0, 1);
-
+        cpu.run_opcode(0x8013);
         assert_eq!(cpu.v[0], 0b0110);
+        assert_eq!(cpu.pc, pc + OPCODE_SIZE);
     }
+
+    #[test]
+    fn test_op_8xy4() {
+        // Vx = Vx + Vy; if carry, set VF
+        let mut cpu = Cpu {
+            memory: [0; 4096],
+            opcode: 0,
+            v: [0; 16],
+            i: 0,
+            pc: 0,
+            gfx: [0; (64 * 32)],
+            delay_timer: 0,
+            sound_timer: 0,
+            stack: [0; 16],
+            sp: 0,
+        };
+        cpu.initialize();
+        let mut pc = cpu.pc;
+
+        // Test with overflow
+        cpu.v[0] = 0xF0;
+        cpu.v[1] = 0xF0;
+        cpu.run_opcode(0x8014);
+        assert_eq!(cpu.v[0], 0xE0);
+        assert_eq!(cpu.v[0xF], 1);
+        assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+
+        // Test without overflow
+        pc = cpu.pc;
+        cpu.v[2] = 0x05;
+        cpu.v[3] = 0x02;
+        cpu.run_opcode(0x8234);
+        assert_eq!(cpu.v[2], 0x07);
+        assert_eq!(cpu.v[0xF], 0);
+        assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+    }
+
 }
