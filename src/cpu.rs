@@ -138,6 +138,8 @@ impl Cpu {
             (0x08, _, _, 0x02) => self.op_8xy2(x, y),   // Bitwise AND of Vx and Vy; result in Vx
             (0x08, _, _, 0x03) => self.op_8xy3(x, y),   // Bitwise XOR of Vx and Vy; result in Vx
             (0x08, _, _, 0x04) => self.op_8xy4(x, y),   // Vx = Vx + Vy; if carry set VF
+            (0x08, _, _, 0x05) => self.op_8xy5(x, y),   // Vx = Vx - Vy; if carry set VF
+            (0x08, _, _, 0x06) => self.op_8x06(x),      // SHR Vx {, Vy}
             _ => ProgramCounter::Next,
         };
 
@@ -247,6 +249,29 @@ impl Cpu {
             self.v[0xf] = 0;
         }
 
+        ProgramCounter::Next
+    }
+
+    // Vx = Vx - Vy; if no carry, set VF
+    fn op_8xy5(&mut self, x: usize, y: usize) -> ProgramCounter {
+        let vx = self.v[x];
+        let oa: (u8, bool) = vx.overflowing_sub(self.v[y]);
+        self.v[x] = oa.0;
+        if oa.1 {
+            self.v[0xf] = 0;
+        } else {
+            self.v[0xf] = 1;
+        }
+
+        ProgramCounter::Next
+    }
+
+    // Vx = Vx SHR 1
+    // If LSB of Vx = 1 then VF = 1 else VF = 0; then Vx
+    // is divided by 2.
+    fn op_8x06(&mut self, x: usize) -> ProgramCounter {
+        self.v[0x0F] = self.v[x] & 0b01; // And with 1 to get final bit
+        self.v[x] >>= 1; // Shift right 1, dividing by 2
         ProgramCounter::Next
     }
 }
@@ -629,6 +654,73 @@ mod tests {
         cpu.run_opcode(0x8234);
         assert_eq!(cpu.v[2], 0x07);
         assert_eq!(cpu.v[0xF], 0);
+        assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+    }
+
+    #[test]
+    fn test_op_8xy5() {
+        // Vx = Vx - Vy; if no carry, set VF
+        let mut cpu = Cpu {
+            memory: [0; 4096],
+            opcode: 0,
+            v: [0; 16],
+            i: 0,
+            pc: 0,
+            gfx: [0; (64 * 32)],
+            delay_timer: 0,
+            sound_timer: 0,
+            stack: [0; 16],
+            sp: 0,
+        };
+        cpu.initialize();
+        let mut pc = cpu.pc;
+
+        // Test with overflow
+        cpu.v[0] = 0x08;
+        cpu.v[1] = 0x0A;
+        cpu.run_opcode(0x8015);
+        assert_eq!(cpu.v[0], 0xFE);
+        assert_eq!(cpu.v[0xF], 0);
+        assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+
+        // Test without overflow
+        pc = cpu.pc;
+        cpu.v[2] = 0x05;
+        cpu.v[3] = 0x02;
+        cpu.run_opcode(0x8235);
+        assert_eq!(cpu.v[2], 0x03);
+        assert_eq!(cpu.v[0xF], 1);
+        assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+    }
+
+    #[test]
+    fn test_op_8x06() {
+        let mut cpu = Cpu {
+            memory: [0; 4096],
+            opcode: 0,
+            v: [0; 16],
+            i: 0,
+            pc: 0,
+            gfx: [0; (64 * 32)],
+            delay_timer: 0,
+            sound_timer: 0,
+            stack: [0; 16],
+            sp: 0,
+        };
+        cpu.initialize();
+
+        let mut pc = cpu.pc;
+        cpu.v[0] = 4;
+        cpu.run_opcode(0x8006); // cpu.v[0] should = 2; with v[f] = 0;
+        assert_eq!(cpu.v[0], 2);
+        assert_eq!(cpu.v[0xF], 0);
+        assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+
+        pc = cpu.pc;
+        cpu.v[4] = 5;
+        cpu.run_opcode(0x8406); // cpu.v[4] should = 2; with v[f] = 1;
+        assert_eq!(cpu.v[4], 2);
+        assert_eq!(cpu.v[0xF], 1);
         assert_eq!(cpu.pc, pc + OPCODE_SIZE);
     }
 
