@@ -141,6 +141,9 @@ impl Cpu {
             (0x08, _, _, 0x05) => self.op_8xy5(x, y),   // Vx = Vx - Vy; if carry set VF
             (0x08, _, _, 0x06) => self.op_8x06(x),      // SHR Vx {, Vy}
             (0x08, _, _, 0x07) => self.op_8xy7(x, y),   // SUB Vx from Vy
+            (0x08, _, _, 0x0E) => self.op_8x0e(x),      // Vx *= 2; with VF set if MSB Vx = 1
+            (0x09, _, _, 0x00) => self.op_9xy0(x, y),   // Skip next if Vx != Vy
+            (0x0A, _, _, _) => self.op_annn(nnn),       // Load nnn into register I
             _ => ProgramCounter::Next,
         };
 
@@ -282,6 +285,28 @@ impl Cpu {
     fn op_8xy7(&mut self, x: usize, y: usize) -> ProgramCounter {
         self.v[0x0F] = if self.v[y] > self.v[x] { 1 } else { 0 };
         self.v[x] = self.v[y].wrapping_sub(self.v[x]);
+        ProgramCounter::Next
+    }
+
+    // If Most Significant Bit of V[x] = 1 then set V[F] = 1 else V[F] = 0
+    // Multiply V[x] by 2
+    fn op_8x0e(&mut self, x: usize) -> ProgramCounter {
+        self.v[0x0F] = (self.v[x] & 0b1000_0000) >> 7; // Bitmask with shift for 1 or 0
+        self.v[x] <<= 1; // Multiply by 2
+        ProgramCounter::Next
+    }
+
+    // Skip if Vx != Vy
+    fn op_9xy0(&mut self, x: usize, y: usize) -> ProgramCounter {
+        if self.v[x] != self.v[y] {
+            return ProgramCounter::Skip;
+        }
+        ProgramCounter::Next
+    }
+
+    // Load nnn into register I
+    fn op_annn(&mut self, nnn: usize) -> ProgramCounter {
+        self.i = nnn as u16;
         ProgramCounter::Next
     }
 }
