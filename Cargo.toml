@@ -8,4 +8,8 @@ edition = "2018"
 name = "r8"
 path = "src/main.rs"
 
+[lib]
+name = "lib"
+path = "src/lib.rs"
+
 [dependencies]
