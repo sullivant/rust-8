@@ -140,6 +140,7 @@ impl Cpu {
             (0x08, _, _, 0x04) => self.op_8xy4(x, y),   // Vx = Vx + Vy; if carry set VF
             (0x08, _, _, 0x05) => self.op_8xy5(x, y),   // Vx = Vx - Vy; if carry set VF
             (0x08, _, _, 0x06) => self.op_8x06(x),      // SHR Vx {, Vy}
+            (0x08, _, _, 0x07) => self.op_8xy7(x, y),   // SUB Vx from Vy
             _ => ProgramCounter::Next,
         };
 
@@ -272,6 +273,15 @@ impl Cpu {
     fn op_8x06(&mut self, x: usize) -> ProgramCounter {
         self.v[0x0F] = self.v[x] & 0b01; // And with 1 to get final bit
         self.v[x] >>= 1; // Shift right 1, dividing by 2
+        ProgramCounter::Next
+    }
+
+    // SUBN Vx, Vy
+    // If Vy > Vx, then VF is set to 1, else VF = 0. Then Vx is subtracted
+    // from Vy, and the results stored in Vx.
+    fn op_8xy7(&mut self, x: usize, y: usize) -> ProgramCounter {
+        self.v[0x0F] = if self.v[y] > self.v[x] { 1 } else { 0 };
+        self.v[x] = self.v[y].wrapping_sub(self.v[x]);
         ProgramCounter::Next
     }
 }

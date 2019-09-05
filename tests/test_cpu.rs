@@ -444,3 +444,22 @@ fn test_op_8x06() {
     assert_eq!(cpu.v[0xF], 1);
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
 }
+
+#[test]
+fn test_op_8xy7() {
+    let mut cpu = Cpu {
+        memory: [0; 4096],
+        opcode: 0,
+        v: [0; 16],
+        i: 0,
+        pc: 0,
+        gfx: [0; (64 * 32)],
+        delay_timer: 0,
+        sound_timer: 0,
+        stack: [0; 16],
+        sp: 0,
+    };
+    cpu.initialize();
+    //TODO: Do this test
+    assert_eq!(1, 0);
+}
