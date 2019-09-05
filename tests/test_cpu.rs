@@ -460,6 +460,111 @@ fn test_op_8xy7() {
         sp: 0,
     };
     cpu.initialize();
-    //TODO: Do this test
-    assert_eq!(1, 0);
+
+    // V[F] should be 1; v[0] should be 1;
+    let mut pc = cpu.pc;
+    cpu.v[0] = 0x05;
+    cpu.v[1] = 0x06;
+    cpu.run_opcode(0x8017);
+
+    assert_eq!(cpu.v[0x0F], 1);
+    assert_eq!(cpu.v[0], 0x01);
+    assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+
+    // V[F] should be 0; v[0] should be wrapped;
+    pc = cpu.pc;
+    cpu.v[0] = 0x08;
+    cpu.v[1] = 0x03;
+    cpu.run_opcode(0x8017);
+
+    assert_eq!(cpu.v[0x0F], 0);
+    assert_eq!(cpu.v[0], 251);
+    assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+}
+
+#[test]
+fn test_op_8x0e() {
+    let mut cpu = Cpu {
+        memory: [0; 4096],
+        opcode: 0,
+        v: [0; 16],
+        i: 0,
+        pc: 0,
+        gfx: [0; (64 * 32)],
+        delay_timer: 0,
+        sound_timer: 0,
+        stack: [0; 16],
+        sp: 0,
+    };
+    cpu.initialize();
+
+    let mut pc = cpu.pc;
+    cpu.v[0] = 0x04;
+    cpu.run_opcode(0x800E);
+
+    assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+    assert_eq!(cpu.v[0x0F], 0);
+    assert_eq!(cpu.v[0], 0x08);
+
+    pc = cpu.pc;
+    cpu.v[1] = 0x82; // 0b10000010
+    cpu.run_opcode(0x810E);
+
+    assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+    assert_eq!(cpu.v[0x0F], 1);
+    assert_eq!(cpu.v[1], 0x04);
+}
+
+#[test]
+fn test_op_9xy0() {
+    let mut cpu = Cpu {
+        memory: [0; 4096],
+        opcode: 0,
+        v: [0; 16],
+        i: 0,
+        pc: 0,
+        gfx: [0; (64 * 32)],
+        delay_timer: 0,
+        sound_timer: 0,
+        stack: [0; 16],
+        sp: 0,
+    };
+    cpu.initialize();
+
+    let mut pc = cpu.pc;
+    cpu.v[0] = 0x04;
+    cpu.v[1] = 0x04;
+    cpu.run_opcode(0x9010);
+
+    assert_eq!(cpu.pc, pc + OPCODE_SIZE); // Should not skip
+
+    pc = cpu.pc;
+    cpu.v[0] = 0x04;
+    cpu.v[1] = 0x01;
+    cpu.run_opcode(0x9010);
+
+    assert_eq!(cpu.pc, pc + (OPCODE_SIZE * 2)); // Should skip
+}
+
+#[test]
+fn test_op_annn() {
+    let mut cpu = Cpu {
+        memory: [0; 4096],
+        opcode: 0,
+        v: [0; 16],
+        i: 0,
+        pc: 0,
+        gfx: [0; (64 * 32)],
+        delay_timer: 0,
+        sound_timer: 0,
+        stack: [0; 16],
+        sp: 0,
+    };
+    cpu.initialize();
+
+    let pc = cpu.pc;
+    cpu.run_opcode(0xA0FF); // Should load 123 into register i
+
+    assert_eq!(cpu.i, 255 as u16);
+    assert_eq!(cpu.pc, pc + OPCODE_SIZE);
 }
