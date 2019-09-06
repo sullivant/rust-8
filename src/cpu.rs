@@ -1,11 +1,9 @@
+use super::{C8_HEIGHT, C8_WIDTH, OPCODE_SIZE};
+use crate::fonts::FONT_SET;
 use rand::Rng;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-
-use crate::fonts::FONT_SET;
-
-use super::{C8_HEIGHT, C8_WIDTH, OPCODE_SIZE};
 
 enum ProgramCounter {
     Next,
@@ -24,7 +22,7 @@ pub struct Cpu {
     pub pc: usize, // Program Counter
 
     // Array of graphics pixels ( 64 x 32 )
-    pub gfx: [u8; (64 * 32)],
+    pub gfx: [u8; (C8_WIDTH * C8_HEIGHT)],
 
     // Some timers
     pub delay_timer: u8,
@@ -34,6 +32,13 @@ pub struct Cpu {
     pub stack: [usize; 16],
     pub sp: usize,
 }
+
+impl Default for Cpu {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Cpu {
     pub fn new() -> Cpu {
         let mut cpu = Cpu {
@@ -42,7 +47,7 @@ impl Cpu {
             v: [0; 16],
             i: 0,
             pc: 0,
-            gfx: [0; (64 * 32)],
+            gfx: [0; (C8_WIDTH * C8_HEIGHT)],
             delay_timer: 0,
             sound_timer: 0,
             stack: [0; 16],
