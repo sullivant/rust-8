@@ -1,26 +1,9 @@
 extern crate lib;
 use lib::{Cpu, OPCODE_SIZE};
 
-fn get_cpu() -> Cpu {
-    let mut cpu = Cpu {
-        memory: [0; 4096],
-        opcode: 0,
-        v: [0; 16],
-        i: 0,
-        pc: 0,
-        gfx: [0; (64 * 32)],
-        delay_timer: 0,
-        sound_timer: 0,
-        stack: [0; 16],
-        sp: 0,
-    };
-    cpu.initialize();
-    cpu
-}
-
 #[test]
 fn test_op_00ee() {
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
 
     cpu.sp = 1;
     cpu.stack[cpu.sp] = 0x201;
@@ -33,7 +16,7 @@ fn test_op_00ee() {
 
 #[test]
 fn test_op_1nnn() {
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
 
     cpu.run_opcode(0x1201); // PC should jump to 0x201
 
@@ -42,7 +25,7 @@ fn test_op_1nnn() {
 
 #[test]
 fn test_op_2nnn() {
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
 
     cpu.run_opcode(0x2201);
 
@@ -59,7 +42,7 @@ fn test_op_2nnn() {
 #[test]
 fn test_op_3xkk() {
     // Skip next if Vx = kk
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
     let mut p = cpu.pc; // Starts at 0x200
     let x: usize = 1;
     cpu.v[x] = 3 as u8;
@@ -77,7 +60,7 @@ fn test_op_3xkk() {
 #[test]
 fn test_op_4xkk() {
     // Skip next if Vx != kk
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
 
     let mut p = cpu.pc; // Starts at 0x200
     let x: usize = 1;
@@ -96,7 +79,7 @@ fn test_op_4xkk() {
 #[test]
 fn test_op_5xy0() {
     // Skip next if Vx = Vy
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
 
     cpu.v[0] = 1;
     cpu.v[1] = 1;
@@ -113,7 +96,7 @@ fn test_op_5xy0() {
 #[test]
 fn test_op_6xkk() {
     // Set Vx = kk
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
 
     let pc = cpu.pc;
     cpu.run_opcode(0x61F0);
@@ -125,7 +108,7 @@ fn test_op_6xkk() {
 
 #[test]
 fn test_op_7xkk() {
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
 
     let mut pc = cpu.pc;
     let mut x: usize = 0;
@@ -152,7 +135,7 @@ fn test_op_7xkk() {
 #[test]
 fn test_op_8xy0() {
     // Puts value Vx into Vy
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
     let p = cpu.pc;
     cpu.v[0] = 0x05;
     cpu.run_opcode(0x8010);
@@ -164,7 +147,7 @@ fn test_op_8xy0() {
 
 #[test]
 fn test_op_8xy1() {
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
     // set v[0] to b0001
     cpu.v[0] = 0b0001;
     // set v[1] to b1000
@@ -180,7 +163,7 @@ fn test_op_8xy1() {
 
 #[test]
 fn test_op_8xy2() {
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
     let pc = cpu.pc;
     // set v[0] to b1001
     cpu.v[0] = 0b1001;
@@ -196,7 +179,7 @@ fn test_op_8xy2() {
 
 #[test]
 fn test_op_8xy3() {
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
     let pc = cpu.pc;
 
     // set v[0] to b1001
@@ -213,7 +196,7 @@ fn test_op_8xy3() {
 #[test]
 fn test_op_8xy4() {
     // Vx = Vx + Vy; if carry, set VF
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
     let mut pc = cpu.pc;
 
     // Test with overflow
@@ -237,7 +220,7 @@ fn test_op_8xy4() {
 #[test]
 fn test_op_8xy5() {
     // Vx = Vx - Vy; if no carry, set VF
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
     let mut pc = cpu.pc;
 
     // Test with overflow
@@ -260,7 +243,7 @@ fn test_op_8xy5() {
 
 #[test]
 fn test_op_8x06() {
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
 
     let mut pc = cpu.pc;
     cpu.v[0] = 4;
@@ -279,7 +262,7 @@ fn test_op_8x06() {
 
 #[test]
 fn test_op_8xy7() {
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
 
     // V[F] should be 1; v[0] should be 1;
     let mut pc = cpu.pc;
@@ -304,7 +287,7 @@ fn test_op_8xy7() {
 
 #[test]
 fn test_op_8x0e() {
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
 
     let mut pc = cpu.pc;
     cpu.v[0] = 0x04;
@@ -325,7 +308,7 @@ fn test_op_8x0e() {
 
 #[test]
 fn test_op_9xy0() {
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
 
     let mut pc = cpu.pc;
     cpu.v[0] = 0x04;
@@ -344,7 +327,7 @@ fn test_op_9xy0() {
 
 #[test]
 fn test_op_annn() {
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
 
     let pc = cpu.pc;
     cpu.run_opcode(0xA0FF); // Should load 123 into register i
@@ -355,7 +338,7 @@ fn test_op_annn() {
 
 #[test]
 fn test_op_bnnn() {
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
 
     cpu.v[0] = 1;
     cpu.run_opcode(0xB0CA); // Should jump to 0x0CA + v[0]
@@ -364,7 +347,7 @@ fn test_op_bnnn() {
 
 #[test]
 fn test_op_cxkk() {
-    let mut cpu = get_cpu();
+    let mut cpu = Cpu::new();
     let pc = cpu.pc;
     cpu.run_opcode(0xC001); // set v[0] to random + 01
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
