@@ -5,7 +5,7 @@ use std::io::prelude::*;
 
 use crate::fonts::FONT_SET;
 
-const OPCODE_SIZE: usize = 2;
+use super::{C8_HEIGHT, C8_WIDTH, OPCODE_SIZE};
 
 enum ProgramCounter {
     Next,
@@ -147,6 +147,7 @@ impl Cpu {
             (0x0A, _, _, _) => self.op_annn(nnn),       // Load nnn into register I
             (0x0B, _, _, _) => self.op_bnnn(nnn),       // Jump to nnn+v[0]
             (0x0C, _, _, _) => self.op_cxkk(x, kk),     // Set Vx = random byte AND kk.
+            //(0x0D, _, _, _) => self.op_dxyn(x, y, n),   // Display n-byte sprite
             _ => ProgramCounter::Next,
         };
 
@@ -327,4 +328,18 @@ impl Cpu {
 
         ProgramCounter::Next
     }
+
+    // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
+    // From: http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#Dxyn
+    // The interpreter reads n bytes from memory, starting at the address stored in I. These bytes
+    // are then displayed as sprites on screen at coordinates (Vx, Vy). Sprites are XORed onto the
+    // existing screen. If this causes any pixels to be erased, VF is set to 1, otherwise it is set
+    // to 0. If the sprite is positioned so part of it is outside the coordinates of the display,
+    // it wraps around to the opposite side of the screen. See instruction 8xy3 for more
+    // information on XOR, and section 2.4, Display, for more information on the Chip-8 screen and
+    // sprites.
+    //
+    //fn op_dxyn(&mut self, x: usize, y: usize, n: usize) -> ProgramCounter {
+    //    ProgramCounter::Next
+    //}
 }
