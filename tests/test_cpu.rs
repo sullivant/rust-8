@@ -568,3 +568,47 @@ fn test_op_annn() {
     assert_eq!(cpu.i, 255 as u16);
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
 }
+
+#[test]
+fn test_op_bnnn() {
+    let mut cpu = Cpu {
+        memory: [0; 4096],
+        opcode: 0,
+        v: [0; 16],
+        i: 0,
+        pc: 0,
+        gfx: [0; (64 * 32)],
+        delay_timer: 0,
+        sound_timer: 0,
+        stack: [0; 16],
+        sp: 0,
+    };
+    cpu.initialize();
+
+    cpu.v[0] = 1;
+    cpu.run_opcode(0xB0CA); // Should jump to 0x0CA + v[0]
+    assert_eq!(cpu.pc, 0x0CB);
+}
+
+#[test]
+fn test_op_cxkk() {
+    let mut cpu = Cpu {
+        memory: [0; 4096],
+        opcode: 0,
+        v: [0; 16],
+        i: 0,
+        pc: 0,
+        gfx: [0; (64 * 32)],
+        delay_timer: 0,
+        sound_timer: 0,
+        stack: [0; 16],
+        sp: 0,
+    };
+    cpu.initialize();
+
+    let pc = cpu.pc;
+    cpu.run_opcode(0xC001); // set v[0] to random + 01
+    assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+
+    // TODO: Figure out a way to test the RNG
+}

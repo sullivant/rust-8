@@ -13,3 +13,4 @@ name = "lib"
 path = "src/lib.rs"
 
 [dependencies]
+rand = "0.7.0"
