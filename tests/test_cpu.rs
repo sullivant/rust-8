@@ -213,6 +213,7 @@ fn test_op_8xy3() {
 #[test]
 fn test_op_8xy4() {
     // Vx = Vx + Vy; if carry, set VF
+    let mut cpu = get_cpu();
     let mut pc = cpu.pc;
 
     // Test with overflow
