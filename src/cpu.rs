@@ -1,3 +1,4 @@
+use rand::Rng;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
@@ -144,6 +145,8 @@ impl Cpu {
             (0x08, _, _, 0x0E) => self.op_8x0e(x),      // Vx *= 2; with VF set if MSB Vx = 1
             (0x09, _, _, 0x00) => self.op_9xy0(x, y),   // Skip next if Vx != Vy
             (0x0A, _, _, _) => self.op_annn(nnn),       // Load nnn into register I
+            (0x0B, _, _, _) => self.op_bnnn(nnn),       // Jump to nnn+v[0]
+            (0x0C, _, _, _) => self.op_cxkk(x, kk),     // Set Vx = random byte AND kk.
             _ => ProgramCounter::Next,
         };
 
@@ -307,6 +310,21 @@ impl Cpu {
     // Load nnn into register I
     fn op_annn(&mut self, nnn: usize) -> ProgramCounter {
         self.i = nnn as u16;
+        ProgramCounter::Next
+    }
+
+    // Jump to location nnn + V0.
+    // The program counter is set to nnn plus the value of V0.
+    fn op_bnnn(&mut self, nnn: usize) -> ProgramCounter {
+        ProgramCounter::Jump(nnn + self.v[0] as usize)
+    }
+
+    // Set Vx = random byte AND kk.
+    fn op_cxkk(&mut self, x: usize, kk: u8) -> ProgramCounter {
+        let mut rng = rand::thread_rng();
+        let v = rng.gen_range(0 as u16, 256 as u16) as u8; // Inclusive of low, exclusive of high, so 0-255
+        self.v[x] = kk.wrapping_add(v);
+
         ProgramCounter::Next
     }
 }
