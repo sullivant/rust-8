@@ -35,6 +35,23 @@ pub struct Cpu {
     pub sp: usize,
 }
 impl Cpu {
+    pub fn new() -> Cpu {
+        let mut cpu = Cpu {
+            memory: [0; 4096],
+            opcode: 0,
+            v: [0; 16],
+            i: 0,
+            pc: 0,
+            gfx: [0; (64 * 32)],
+            delay_timer: 0,
+            sound_timer: 0,
+            stack: [0; 16],
+            sp: 0,
+        };
+        cpu.initialize();
+        cpu
+    }
+
     pub fn initialize(&mut self) {
         self.pc = 0x200; // Starts at 0x200 because 0x00 to 0x1FF is other data
         self.opcode = 0x00;
