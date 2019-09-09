@@ -360,3 +360,22 @@ fn test_op_dxyn() {
     // TODO: Write test for display and overlap check v[F]
     assert_eq!(1, 1);
 }
+
+#[test]
+fn test_op_ex9e() {
+    let mut cpu = Cpu::new();
+
+    // Test for key 0 press
+    let mut pc = cpu.pc;
+    cpu.input.keys[0x00] = true;
+    cpu.v[0] = 0x00;
+    cpu.run_opcode(0xE09E); // Check for press at key v[0] (0)
+    assert_eq!(cpu.pc, pc + (OPCODE_SIZE * 2));
+
+    // Should not skip
+    let pc = cpu.pc;
+    cpu.v[0] = 0x01;
+    cpu.input.keys[0x01] = false;
+    cpu.run_opcode(0xE09E); // Look for press at key v[0] (1)
+    assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+}
