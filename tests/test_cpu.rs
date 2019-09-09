@@ -354,3 +354,9 @@ fn test_op_cxkk() {
 
     // TODO: Figure out a way to test the RNG
 }
+
+#[test]
+fn test_op_dxyn() {
+    // TODO: Write test for display and overlap check v[F]
+    assert_eq!(1, 1);
+}

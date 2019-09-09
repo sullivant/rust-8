@@ -152,7 +152,7 @@ impl Cpu {
             (0x0A, _, _, _) => self.op_annn(nnn),       // Load nnn into register I
             (0x0B, _, _, _) => self.op_bnnn(nnn),       // Jump to nnn+v[0]
             (0x0C, _, _, _) => self.op_cxkk(x, kk),     // Set Vx = random byte AND kk.
-            //(0x0D, _, _, _) => self.op_dxyn(x, y, n),   // Display n-byte sprite
+            (0x0D, _, _, _) => self.op_dxyn(x, y, n),   // Display n-byte sprite
             _ => ProgramCounter::Next,
         };
 
