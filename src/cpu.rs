@@ -18,11 +18,12 @@ pub struct Cpu {
 
     // Registers
     pub v: [u8; 16],
-    pub i: u16,    // Index register
+    pub i: usize,  // Index register
     pub pc: usize, // Program Counter
 
     // Array of graphics pixels ( 64 x 32 )
-    pub gfx: [u8; (C8_WIDTH * C8_HEIGHT)],
+    pub gfx: [[u8; C8_WIDTH]; C8_HEIGHT],
+    pub gfx_updated: bool,
 
     // Some timers
     pub delay_timer: u8,
@@ -43,37 +44,19 @@ impl Cpu {
     pub fn new() -> Cpu {
         let mut cpu = Cpu {
             memory: [0; 4096],
-            opcode: 0,
+            opcode: 0x00,
             v: [0; 16],
             i: 0,
-            pc: 0,
-            gfx: [0; (C8_WIDTH * C8_HEIGHT)],
+            pc: 0x200,
+            gfx: [[0; C8_WIDTH]; C8_HEIGHT],
+            gfx_updated: false,
             delay_timer: 0,
             sound_timer: 0,
             stack: [0; 16],
             sp: 0,
         };
-        cpu.initialize();
+        cpu.load_fonts();
         cpu
-    }
-
-    pub fn initialize(&mut self) {
-        self.pc = 0x200; // Starts at 0x200 because 0x00 to 0x1FF is other data
-        self.opcode = 0x00;
-
-        // Registers
-        self.i = 0x00;
-        self.v = [0; 16];
-
-        self.gfx = [0; (64 * 32)];
-        self.stack = [0; 16];
-        self.sp = 0;
-        self.memory = [0; 4096];
-
-        self.delay_timer = 0;
-        self.sound_timer = 0;
-
-        self.load_fonts();
     }
 
     #[allow(dead_code)]
@@ -332,7 +315,7 @@ impl Cpu {
 
     // Load nnn into register I
     fn op_annn(&mut self, nnn: usize) -> ProgramCounter {
-        self.i = nnn as u16;
+        self.i = nnn;
         ProgramCounter::Next
     }
 
@@ -361,7 +344,23 @@ impl Cpu {
     // information on XOR, and section 2.4, Display, for more information on the Chip-8 screen and
     // sprites.
     //
-    //fn op_dxyn(&mut self, x: usize, y: usize, n: usize) -> ProgramCounter {
-    //    ProgramCounter::Next
-    //}
+    // I need to work up a method to display to the screen.  Right now this opcode is largely
+    // copied from Starrhorne's repo.
+    //
+    // TODO: Separate this into a display module?
+    fn op_dxyn(&mut self, x: usize, y: usize, n: usize) -> ProgramCounter {
+        for byte in 0..n {
+            let y = (y as usize + byte) % C8_HEIGHT; // Build up the bytes
+            for bit in 0..8 {
+                let x = (x as usize + bit) % C8_WIDTH; // Build out the bits
+                let color = (self.memory[self.i + byte] >> (7 - bit)) & 1;
+                // Determine if we overlap
+                let o = color & self.gfx[y][x];
+                self.v[0x0F] |= o;
+                self.gfx[y][x] ^= color;
+            }
+        }
+        self.gfx_updated = true;
+        ProgramCounter::Next
+    }
 }
