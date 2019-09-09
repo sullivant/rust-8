@@ -332,7 +332,7 @@ fn test_op_annn() {
     let pc = cpu.pc;
     cpu.run_opcode(0xA0FF); // Should load 123 into register i
 
-    assert_eq!(cpu.i, 255 as u16);
+    assert_eq!(cpu.i, 255 as usize);
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
 }
 
