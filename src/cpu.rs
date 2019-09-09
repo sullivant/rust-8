@@ -10,6 +10,27 @@ enum ProgramCounter {
     Skip,
     Jump(usize),
 }
+pub struct Input {
+    // There are 16 keys
+    pub keys: [bool; 16],
+}
+impl Default for Input {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+impl Input {
+    pub fn new() -> Input {
+        // TODO: This will need to be mutable later
+        let input = Input { keys: [false; 16] };
+        input
+    }
+    pub fn dump_keys(&self) {
+        for (i, r) in self.keys.iter().enumerate() {
+            println!("key {:X}: {}", i, r);
+        }
+    }
+}
 
 pub struct Cpu {
     // Memory
@@ -32,6 +53,9 @@ pub struct Cpu {
     // Stack and stack pointer
     pub stack: [usize; 16],
     pub sp: usize,
+
+    // Input and keyboard
+    pub input: Input,
 }
 
 impl Default for Cpu {
@@ -54,6 +78,7 @@ impl Cpu {
             sound_timer: 0,
             stack: [0; 16],
             sp: 0,
+            input: Input::new(),
         };
         cpu.load_fonts();
         cpu
@@ -153,6 +178,7 @@ impl Cpu {
             (0x0B, _, _, _) => self.op_bnnn(nnn),       // Jump to nnn+v[0]
             (0x0C, _, _, _) => self.op_cxkk(x, kk),     // Set Vx = random byte AND kk.
             (0x0D, _, _, _) => self.op_dxyn(x, y, n),   // Display n-byte sprite
+            (0x0E, _, 0x09, 0x0E) => self.op_ex9e(x),   // Skip if key at v[x] is pressed
             _ => ProgramCounter::Next,
         };
 
@@ -361,6 +387,14 @@ impl Cpu {
             }
         }
         self.gfx_updated = true;
+        ProgramCounter::Next
+    }
+
+    fn op_ex9e(&mut self, x: usize) -> ProgramCounter {
+        if self.input.keys[self.v[x] as usize] {
+            return ProgramCounter::Skip;
+        }
+
         ProgramCounter::Next
     }
 }
