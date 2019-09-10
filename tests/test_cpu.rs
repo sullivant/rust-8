@@ -2,6 +2,14 @@ extern crate lib;
 use lib::{Cpu, OPCODE_SIZE};
 
 #[test]
+fn test_cpu_default() {
+    let mut cpu = Cpu::new();
+    cpu.pc = 0x201;
+    cpu = Cpu::default();
+    assert_eq!(cpu.pc, 0x200);
+}
+
+#[test]
 fn test_op_00ee() {
     let mut cpu = Cpu::new();
 
@@ -373,9 +381,55 @@ fn test_op_ex9e() {
     assert_eq!(cpu.pc, pc + (OPCODE_SIZE * 2));
 
     // Should not skip
-    let pc = cpu.pc;
+    pc = cpu.pc;
     cpu.v[0] = 0x01;
     cpu.input.keys[0x01] = false;
     cpu.run_opcode(0xE09E); // Look for press at key v[0] (1)
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+}
+
+#[test]
+fn test_op_exa1() {
+    let mut cpu = Cpu::new();
+
+    // Test for key 0 not pressed
+    let mut pc = cpu.pc;
+    cpu.input.keys[0x00] = false;
+    cpu.v[0] = 0x00; // Check for key 0
+    cpu.run_opcode(0xE0A1);
+    assert_eq!(cpu.pc, pc + (OPCODE_SIZE * 2));
+
+    // Lets press a key and test it does not skip
+    pc = cpu.pc;
+    cpu.input.keys[0x01] = true;
+    cpu.v[0] = 0x01; // Check for key 1
+    cpu.run_opcode(0xE0A1);
+    assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+}
+
+#[test]
+fn test_op_fx07() {
+    let mut cpu = Cpu::new();
+    let pc = cpu.pc;
+    cpu.delay_timer = 123;
+    cpu.run_opcode(0xFA07);
+    assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+    assert_eq!(cpu.v[0xA], 123);
+}
+
+#[test]
+fn test_op_fx0a() {
+    let mut cpu = Cpu::new();
+    let pc = cpu.pc;
+
+    // Setup our fake keypress as key 2
+    cpu.input.keys[2] = true;
+
+    // Run this opcode and check v[x] for the key 1 after a tick()
+    cpu.run_opcode(0xF10A);
+    assert_eq!(cpu.input.read_keys, true);
+    assert_eq!(cpu.input.key_target, 0x01);
+    assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+    cpu.tick();
+    assert_eq!(cpu.v[1], 2); // Key 2 (the pressed one) was stored in v[1]
 }

@@ -13,6 +13,8 @@ enum ProgramCounter {
 pub struct Input {
     // There are 16 keys
     pub keys: [bool; 16],
+    pub read_keys: bool, // If true, tick() will read the key and store it into key_target
+    pub key_target: usize, // Set on op fx0a, where in V[] to store this key
 }
 impl Default for Input {
     fn default() -> Self {
@@ -22,8 +24,11 @@ impl Default for Input {
 impl Input {
     pub fn new() -> Input {
         // TODO: This will need to be mutable later
-        let input = Input { keys: [false; 16] };
-        input
+        Input {
+            keys: [false; 16],
+            read_keys: false,
+            key_target: 0,
+        }
     }
     pub fn dump_keys(&self) {
         for (i, r) in self.keys.iter().enumerate() {
@@ -123,6 +128,17 @@ impl Cpu {
     // TODO: Output state control for sound/graphics
     // TODO: Read keypad on each tick
     pub fn tick(&mut self) {
+        // Get keypad if asked to get it
+        if self.input.read_keys {
+            for i in 0..self.input.keys.len() {
+                if self.input.keys[i] {
+                    self.input.read_keys = false;
+                    self.v[self.input.key_target] = i as u8;
+                    break;
+                }
+            }
+        }
+
         let opcode = self.read_word();
         self.run_opcode(opcode);
     }
@@ -179,6 +195,9 @@ impl Cpu {
             (0x0C, _, _, _) => self.op_cxkk(x, kk),     // Set Vx = random byte AND kk.
             (0x0D, _, _, _) => self.op_dxyn(x, y, n),   // Display n-byte sprite
             (0x0E, _, 0x09, 0x0E) => self.op_ex9e(x),   // Skip if key at v[x] is pressed
+            (0x0E, _, 0x0A, 0x01) => self.op_exa1(x),   // Skip if key at v[x] is not pressed
+            (0x0F, _, 0x00, 0x07) => self.op_fx07(x),   // Set delay timer value
+            (0x0F, _, 0x00, 0x0A) => self.op_fx0a(x),   // Store keypress into v[x]
             _ => ProgramCounter::Next,
         };
 
@@ -390,11 +409,33 @@ impl Cpu {
         ProgramCounter::Next
     }
 
+    // Skip next instruction if key with the value of Vx is pressed.
     fn op_ex9e(&mut self, x: usize) -> ProgramCounter {
         if self.input.keys[self.v[x] as usize] {
             return ProgramCounter::Skip;
         }
 
+        ProgramCounter::Next
+    }
+
+    // Skip next instruction if key with the value of Vx is not pressed.
+    fn op_exa1(&mut self, x: usize) -> ProgramCounter {
+        if !self.input.keys[self.v[x] as usize] {
+            return ProgramCounter::Skip;
+        }
+        ProgramCounter::Next
+    }
+
+    // Set Vx = delay timer value.
+    fn op_fx07(&mut self, x: usize) -> ProgramCounter {
+        self.v[x] = self.delay_timer;
+        ProgramCounter::Next
+    }
+
+    // Wait for a key press, store the value of the key in Vx.
+    fn op_fx0a(&mut self, x: usize) -> ProgramCounter {
+        self.input.read_keys = true; // Tell tick() to read a key
+        self.input.key_target = x; // And store it into V[x]
         ProgramCounter::Next
     }
 }
