@@ -211,6 +211,12 @@ impl Cpu {
     // Clear screen
     // TODO: Implement graphics
     fn op_00e0(&mut self) -> ProgramCounter {
+        for y in 0..C8_HEIGHT {
+            for x in 0..C8_WIDTH {
+                self.gfx[y][x] = 0;
+            }
+        }
+        self.gfx_updated = true;
         ProgramCounter::Next
     }
 

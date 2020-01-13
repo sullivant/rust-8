@@ -10,6 +10,12 @@ fn test_cpu_default() {
 }
 
 #[test]
+fn test_op_00e0() {
+    //TODO: This test needs to be populated
+    assert_eq!(1, 1);
+}
+
+#[test]
 fn test_op_00ee() {
     let mut cpu = Cpu::new();
 
