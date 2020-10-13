@@ -11,8 +11,16 @@ fn test_cpu_default() {
 
 #[test]
 fn test_op_00e0() {
-    //TODO: This test needs to be populated
-    assert_eq!(1, 1);
+    // Ensure that the graphics array is emptied (set to zero)
+    let mut cpu = Cpu::new();
+
+    // Set some values into the gfx array first
+    cpu.gfx[0][0] = 1;
+    assert_eq!(1, cpu.gfx[0][0]);
+
+    cpu.run_opcode(0x00E0);
+
+    assert_eq!(0, cpu.gfx[0][0]);
 }
 
 #[test]
