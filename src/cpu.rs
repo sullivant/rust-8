@@ -159,7 +159,7 @@ impl Cpu {
         let n = nibbles.3 as usize;
 
         println!("Running opcode: {:X}", opcode);
-        println!("  Nibbles: {:?}", nibbles);
+        //println!("  Nibbles: {:?}", nibbles);
         println!("  nnn:{} / kk:{} / x,y,n: {},{},{}", nnn, kk, x, y, n);
 
         //After each runcode we need to update our program counter so we can read

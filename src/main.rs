@@ -1,5 +1,4 @@
-use std::io;
-fn main() -> io::Result<()> {
+fn main() -> Result<(), String> {
     lib::go()?;
     Ok(())
 }
