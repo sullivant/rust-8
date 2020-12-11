@@ -171,7 +171,6 @@ impl Cpu {
             "  nnn:{} / kk:{}|{:X} / x,y,n: {},{},{}",
             nnn, kk, kk, x, y, n
         );
-        println!("  Trying match");
 
         //After each runcode we need to update our program counter so we can read
         //a specific opcode out of ram.  Sometimes it's just "the next one", sometimes

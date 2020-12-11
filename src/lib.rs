@@ -29,7 +29,7 @@ pub struct App {
     rotation: f64,  // Rotation for the square.
 
     // TODO: Make this actually be the cpu.gfx
-    gfx: [[u8; C8_WIDTH as usize]; C8_HEIGHT as usize],
+    vbuff: [[u8; C8_WIDTH as usize]; C8_HEIGHT as usize],
 }
 impl App {
     fn render(&mut self, args: &RenderArgs) {
@@ -59,7 +59,7 @@ impl App {
         });
 
         // for each of the pixels in gfx, draw them as a black dot on gl
-        for (y, row) in self.gfx.iter().enumerate() {
+        for (y, row) in self.vbuff.iter().enumerate() {
             for (x, val) in row.iter().enumerate() {
                 let x = (x as f64) * DISP_SCALE;
                 let y = (y as f64) * DISP_SCALE;
@@ -103,28 +103,41 @@ pub fn go() -> Result<(), String> {
     let mut app = App {
         gl: GlGraphics::new(opengl),
         rotation: 0.0,
-        gfx: [[0; C8_WIDTH]; C8_HEIGHT],
+        vbuff: [[0; C8_WIDTH]; C8_HEIGHT],
     };
+
+    let mut s: usize = 0;
 
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
         // Just make a few default things turn on
-        app.gfx[0][0] = 1;
-        app.gfx[0][C8_WIDTH - 1] = 1;
-        app.gfx[C8_HEIGHT - 1][0] = 1;
-        app.gfx[C8_HEIGHT - 1][C8_WIDTH - 1] = 1;
+        cpu.gfx[0][s] = if cpu.gfx[0][s] == 1 { 0 } else { 1 };
+        s = if s == C8_WIDTH - 1 { 0 } else { s + 1 };
 
-        if let Some(args) = e.render_args() {
-            app.render(&args);
-        }
+        cpu.gfx[0][C8_WIDTH - 1] = 1;
+        cpu.gfx[C8_HEIGHT - 1][0] = 1;
+        cpu.gfx[C8_HEIGHT - 1][C8_WIDTH - 1] = 1;
 
-        if let Some(args) = e.update_args() {
-            app.update(&args);
+        cpu.tick();
+
+        // Copy the cpu's graphics array over to the rendering
+        // system's copy
+        app.vbuff = cpu.gfx;
+
+        if cpu.gfx_updated {
+            if let Some(args) = e.render_args() {
+                app.render(&args);
+            }
+
+            if let Some(args) = e.update_args() {
+                app.update(&args);
+            }
         }
+        cpu.gfx_updated = false;
+
+        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
 
-    ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 30));
-    //        cpu.tick();
     //        cpu.dump_regs();
 
     Ok(())
