@@ -1,9 +1,19 @@
+extern crate glutin_window;
+extern crate graphics;
+extern crate opengl_graphics;
+extern crate piston;
+
+use glutin_window::GlutinWindow as Window;
+use opengl_graphics::{GlGraphics, OpenGL};
+use piston::event_loop::{EventSettings, Events};
+//use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
+use piston::input::*;
+use piston::window::WindowSettings;
+use std::time::Duration;
+
 mod cpu;
 mod display;
 mod fonts;
-
-use minifb::{Key, Window, WindowOptions};
-use std::time::Duration;
 
 pub use cpu::Cpu;
 //use display::DisplayDriver;
@@ -12,54 +22,110 @@ pub use cpu::Cpu;
 pub const OPCODE_SIZE: usize = 2;
 pub const C8_WIDTH: usize = 64;
 pub const C8_HEIGHT: usize = 32;
+pub const DISP_SCALE: f64 = 10.0;
+
+pub struct App {
+    gl: GlGraphics, // OpenGL drawing backend.
+    rotation: f64,  // Rotation for the square.
+
+    // TODO: Make this actually be the cpu.gfx
+    gfx: [[u8; C8_WIDTH as usize]; C8_HEIGHT as usize],
+}
+impl App {
+    fn render(&mut self, args: &RenderArgs) {
+        use graphics::*;
+
+        const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
+        const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
+        const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
+
+        let pixel = rectangle::square(0.0, 0.0, DISP_SCALE);
+        let square = rectangle::square(0.0, 0.0, 50.0);
+        let rotation = self.rotation;
+        let (x, y) = (args.window_size[0] / 2.0, args.window_size[1] / 2.0);
+
+        self.gl.draw(args.viewport(), |c, gl| {
+            // Clear the screen.
+            clear(GREEN, gl);
+
+            let transform = c
+                .transform
+                .trans(x, y)
+                .rot_rad(rotation)
+                .trans(-25.0, -25.0);
+
+            // Draw a box rotating around the middle of the screen.
+            rectangle(RED, square, transform, gl);
+        });
+
+        // for each of the pixels in gfx, draw them as a black dot on gl
+        for (y, row) in self.gfx.iter().enumerate() {
+            for (x, val) in row.iter().enumerate() {
+                let x = (x as f64) * DISP_SCALE;
+                let y = (y as f64) * DISP_SCALE;
+
+                if *val == 1 {
+                    // We need to draw a black rect there
+                    self.gl.draw(args.viewport(), |c, gl| {
+                        let transform = c.transform.trans(x, y);
+                        rectangle(BLACK, pixel, transform, gl);
+                    });
+                }
+            }
+        }
+    }
+
+    fn update(&mut self, args: &UpdateArgs) {
+        // Rotate 2 radians per second.
+        self.rotation += 4.0 * args.dt;
+    }
+}
 
 //pub fn go() -> io::Result<()> {
 pub fn go() -> Result<(), String> {
     let mut cpu = Cpu::new();
     cpu.load_rom("./data/IBM".to_string()).unwrap();
 
-    let mut buffer: Vec<u32> = vec![0; C8_WIDTH * C8_HEIGHT];
+    // Change this to OpenGL::V2_1 if not working.
+    let opengl = OpenGL::V3_2;
 
-    let mut window = Window::new(
-        "Test",
-        C8_WIDTH,
-        C8_HEIGHT,
-        minifb::WindowOptions {
-            resize: true, // TODO allow resize
-            scale: minifb::Scale::X8,
-            ..minifb::WindowOptions::default()
-        },
+    // Create an Glutin window.
+    let mut window: Window = WindowSettings::new(
+        "rust-8",
+        [C8_WIDTH as f64 * DISP_SCALE, C8_HEIGHT as f64 * DISP_SCALE],
     )
-    //WindowOptions::default())
-    .unwrap_or_else(|e| {
-        panic!("{}", e);
-    });
+    .graphics_api(opengl)
+    .exit_on_esc(true)
+    .build()
+    .unwrap();
 
-    // Limit to max ~60 fps update rate
-    window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
+    // Create a new game and run it.
+    let mut app = App {
+        gl: GlGraphics::new(opengl),
+        rotation: 0.0,
+        gfx: [[0; C8_WIDTH]; C8_HEIGHT],
+    };
 
-    while window.is_open() && !window.is_key_down(Key::Escape) {
-        for (i, x) in cpu.gfx.iter_mut().enumerate() {
-            if *x != 0 {
-                buffer[i] = from_u8_rgb(255, 255, 255);
-            }
-            //*x = from_u8_rgb(255, 255, 255); // write something more funny here!
+    let mut events = Events::new(EventSettings::new());
+    while let Some(e) = events.next(&mut window) {
+        // Just make a few default things turn on
+        app.gfx[0][0] = 1;
+        app.gfx[0][C8_WIDTH - 1] = 1;
+        app.gfx[C8_HEIGHT - 1][0] = 1;
+        app.gfx[C8_HEIGHT - 1][C8_WIDTH - 1] = 1;
+
+        if let Some(args) = e.render_args() {
+            app.render(&args);
         }
 
-        //for (i, x) in buffer.iter_mut().enumerate() {}
-
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 30));
-
-        cpu.tick();
-        cpu.dump_regs();
-
-        println!("!!! ONE TICK !!!");
-
-        // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
-        //window
-        //    .update_with_buffer(&buffer, C8_WIDTH, C8_HEIGHT)
-        //    .unwrap();
+        if let Some(args) = e.update_args() {
+            app.update(&args);
+        }
     }
+
+    ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 30));
+    //        cpu.tick();
+    //        cpu.dump_regs();
 
     Ok(())
 }
