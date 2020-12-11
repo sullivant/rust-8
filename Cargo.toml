@@ -14,4 +14,8 @@ path = "src/lib.rs"
 
 [dependencies]
 rand = "0.7.0"
-minifb = "0.19.1"
+piston = "0.52.0"
+piston2d-graphics = "0.39.0"
+pistoncore-glutin_window = "0.67.0"
+piston2d-opengl_graphics = "0.76.0"
+

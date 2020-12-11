@@ -48,8 +48,8 @@ pub struct Cpu {
     pub pc: usize, // Program Counter
 
     // Array of graphics pixels ( 64 x 32 )
-    //pub gfx: [[u8; C8_WIDTH]; C8_HEIGHT],
-    pub gfx: [u8; C8_WIDTH * C8_HEIGHT],
+    pub gfx: [[u8; C8_WIDTH]; C8_HEIGHT],
+    //pub gfx: [u8; C8_WIDTH * C8_HEIGHT],
     pub gfx_updated: bool,
 
     // Some timers
@@ -78,8 +78,8 @@ impl Cpu {
             v: [0; 16],
             i: 0,
             pc: 0x200,
-            //gfx: [[0; C8_WIDTH]; C8_HEIGHT],
-            gfx: [0; C8_WIDTH * C8_HEIGHT],
+            gfx: [[0; C8_WIDTH]; C8_HEIGHT],
+            //gfx: [0; C8_WIDTH * C8_HEIGHT],
             gfx_updated: false,
             delay_timer: 0,
             sound_timer: 0,
@@ -222,9 +222,9 @@ impl Cpu {
     // Clear screen
     // TODO: Implement graphics
     fn op_00e0(&mut self) -> ProgramCounter {
-        for y in 0..C8_HEIGHT {
-            for x in 0..C8_WIDTH {
-                self.gfx[y * x] = 0;
+        for row in self.gfx.iter_mut() {
+            for elem in row.iter_mut() {
+                *elem = 0;
             }
         }
         self.gfx_updated = true;
@@ -412,17 +412,7 @@ impl Cpu {
     //
     // TODO: Separate this into a display module?
     fn op_dxyn(&mut self, x: usize, y: usize, n: usize) -> ProgramCounter {
-        for byte in 0..n {
-            let y = (y as usize + byte) % C8_HEIGHT; // Build up the bytes
-            for bit in 0..8 {
-                let x = (x as usize + bit) % C8_WIDTH; // Build out the bits
-                let color = (self.memory[self.i + byte] >> (7 - bit)) & 1;
-                // Determine if we overlap
-                let o = color & self.gfx[y * x];
-                self.v[0x0F] |= o;
-                self.gfx[y * x] ^= color;
-            }
-        }
+        self.gfx[0][0] = 1;
         self.gfx_updated = true;
         ProgramCounter::Next
     }
