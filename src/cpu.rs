@@ -411,7 +411,16 @@ impl Cpu {
     //
     // TODO: Separate this into a display module?
     fn op_dxyn(&mut self, x: usize, y: usize, n: usize) -> ProgramCounter {
-        self.gfx[0][0] = 1;
+        let vx: u8 = self.v[x]; // The x and y location to display
+        let vy: u8 = self.v[y];
+
+        // TODO: Read the slice and update gfx
+
+        if vx as usize > C8_HEIGHT || vy as usize > C8_WIDTH {
+            return ProgramCounter::Next;
+        }
+
+        self.gfx[vx as usize][vy as usize] = 1;
         self.gfx_updated = true;
         ProgramCounter::Next
     }
