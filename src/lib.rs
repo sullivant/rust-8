@@ -2,11 +2,7 @@ mod cpu;
 mod display;
 mod fonts;
 
-extern crate sdl2;
-
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
-use sdl2::pixels::Color;
+use minifb::{Key, Window, WindowOptions};
 use std::time::Duration;
 
 pub use cpu::Cpu;
@@ -20,58 +16,55 @@ pub const C8_HEIGHT: usize = 32;
 //pub fn go() -> io::Result<()> {
 pub fn go() -> Result<(), String> {
     let mut cpu = Cpu::new();
-    cpu.load_rom("./data/PONG".to_string()).unwrap();
+    cpu.load_rom("./data/IBM".to_string()).unwrap();
 
-    let sdl_context = sdl2::init()?;
-    let video_subsystem = sdl_context.video()?;
+    let mut buffer: Vec<u32> = vec![0; C8_WIDTH * C8_HEIGHT];
 
-    let window = video_subsystem
-        .window("rust-sdl2 demo: Video", 800, 600)
-        .position_centered()
-        .opengl()
-        .build()
-        .map_err(|e| e.to_string())?;
+    let mut window = Window::new(
+        "Test",
+        C8_WIDTH,
+        C8_HEIGHT,
+        minifb::WindowOptions {
+            resize: true, // TODO allow resize
+            scale: minifb::Scale::X8,
+            ..minifb::WindowOptions::default()
+        },
+    )
+    //WindowOptions::default())
+    .unwrap_or_else(|e| {
+        panic!("{}", e);
+    });
 
-    let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
+    // Limit to max ~60 fps update rate
+    window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
-    canvas.set_draw_color(Color::RGB(255, 0, 0));
-    canvas.clear();
-    canvas.present();
-    let mut event_pump = sdl_context.event_pump()?;
-
-    'running: loop {
-        for event in event_pump.poll_iter() {
-            println!("event: {:?}", event);
-            match event {
-                Event::Quit { .. }
-                | Event::MouseButtonDown { .. }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => break 'running,
-                _ => {}
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        for (i, x) in cpu.gfx.iter_mut().enumerate() {
+            if *x != 0 {
+                buffer[i] = from_u8_rgb(255, 255, 255);
             }
+            //*x = from_u8_rgb(255, 255, 255); // write something more funny here!
         }
+
+        //for (i, x) in buffer.iter_mut().enumerate() {}
 
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 30));
 
-        // The rest of the game loop goes here...
         cpu.tick();
-        //cpu.dump_regs();
+        cpu.dump_regs();
 
-        if cpu.gfx_updated {
-            println!("Updating canvas");
-            // Draw canvas here
-            //canvas.clear();
-            canvas.present();
-            cpu.gfx_updated = false;
-        }
+        println!("!!! ONE TICK !!!");
+
+        // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
+        //window
+        //    .update_with_buffer(&buffer, C8_WIDTH, C8_HEIGHT)
+        //    .unwrap();
     }
 
-    // for _i in 1..5 {
-    //     cpu.tick();
-    //     cpu.dump_regs();
-    // }
-
     Ok(())
+}
+
+fn from_u8_rgb(r: u8, g: u8, b: u8) -> u32 {
+    let (r, g, b) = (r as u32, g as u32, b as u32);
+    (r << 16) | (g << 8) | b
 }

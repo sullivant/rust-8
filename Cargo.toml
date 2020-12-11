@@ -14,4 +14,4 @@ path = "src/lib.rs"
 
 [dependencies]
 rand = "0.7.0"
-sdl2 = "0.34"
+minifb = "0.19.1"

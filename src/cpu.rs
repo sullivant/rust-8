@@ -48,7 +48,8 @@ pub struct Cpu {
     pub pc: usize, // Program Counter
 
     // Array of graphics pixels ( 64 x 32 )
-    pub gfx: [[u8; C8_WIDTH]; C8_HEIGHT],
+    //pub gfx: [[u8; C8_WIDTH]; C8_HEIGHT],
+    pub gfx: [u8; C8_WIDTH * C8_HEIGHT],
     pub gfx_updated: bool,
 
     // Some timers
@@ -77,7 +78,8 @@ impl Cpu {
             v: [0; 16],
             i: 0,
             pc: 0x200,
-            gfx: [[0; C8_WIDTH]; C8_HEIGHT],
+            //gfx: [[0; C8_WIDTH]; C8_HEIGHT],
+            gfx: [0; C8_WIDTH * C8_HEIGHT],
             gfx_updated: false,
             delay_timer: 0,
             sound_timer: 0,
@@ -99,6 +101,11 @@ impl Cpu {
     #[allow(dead_code)]
     pub fn dump_regs(&mut self) {
         println!("  v: {:?}", self.v);
+    }
+
+    #[allow(dead_code)]
+    pub fn dump_gfx(&mut self) {
+        println!("  g: {:?}", self.gfx);
     }
 
     // Loads to font set into ram
@@ -159,8 +166,12 @@ impl Cpu {
         let n = nibbles.3 as usize;
 
         println!("Running opcode: {:X}", opcode);
-        //println!("  Nibbles: {:?}", nibbles);
-        println!("  nnn:{} / kk:{} / x,y,n: {},{},{}", nnn, kk, x, y, n);
+        println!("  Nibbles: {:?}", nibbles);
+        println!(
+            "  nnn:{} / kk:{}|{:X} / x,y,n: {},{},{}",
+            nnn, kk, kk, x, y, n
+        );
+        println!("  Trying match");
 
         //After each runcode we need to update our program counter so we can read
         //a specific opcode out of ram.  Sometimes it's just "the next one", sometimes
@@ -213,7 +224,7 @@ impl Cpu {
     fn op_00e0(&mut self) -> ProgramCounter {
         for y in 0..C8_HEIGHT {
             for x in 0..C8_WIDTH {
-                self.gfx[y][x] = 0;
+                self.gfx[y * x] = 0;
             }
         }
         self.gfx_updated = true;
@@ -265,6 +276,7 @@ impl Cpu {
 
     // Set Vx = kk
     fn op_6xkk(&mut self, x: usize, kk: u8) -> ProgramCounter {
+        println!("Setting v[{}] to value: '{}'", x, kk);
         self.v[x] = kk;
         ProgramCounter::Next
     }
@@ -406,12 +418,16 @@ impl Cpu {
                 let x = (x as usize + bit) % C8_WIDTH; // Build out the bits
                 let color = (self.memory[self.i + byte] >> (7 - bit)) & 1;
                 // Determine if we overlap
-                let o = color & self.gfx[y][x];
+                let o = color & self.gfx[y * x];
                 self.v[0x0F] |= o;
-                self.gfx[y][x] ^= color;
+                self.gfx[y * x] ^= color;
             }
         }
         self.gfx_updated = true;
+        ProgramCounter::Next
+    }
+
+    fn draw_byte(&mut self, byte: u8, x: usize, y: usize) -> ProgramCounter {
         ProgramCounter::Next
     }
 
