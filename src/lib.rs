@@ -36,26 +36,12 @@ impl App {
         use graphics::*;
 
         const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
-        const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
         const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
-
         let pixel = rectangle::square(0.0, 0.0, DISP_SCALE);
-        let square = rectangle::square(0.0, 0.0, 50.0);
-        let rotation = self.rotation;
-        let (x, y) = (args.window_size[0] / 2.0, args.window_size[1] / 2.0);
 
-        self.gl.draw(args.viewport(), |c, gl| {
+        self.gl.draw(args.viewport(), |_c, gl| {
             // Clear the screen.
             clear(GREEN, gl);
-
-            let transform = c
-                .transform
-                .trans(x, y)
-                .rot_rad(rotation)
-                .trans(-25.0, -25.0);
-
-            // Draw a box rotating around the middle of the screen.
-            rectangle(RED, square, transform, gl);
         });
 
         // for each of the pixels in gfx, draw them as a black dot on gl
@@ -106,19 +92,15 @@ pub fn go() -> Result<(), String> {
         vbuff: [[0; C8_WIDTH]; C8_HEIGHT],
     };
 
-    let mut s: usize = 0;
-
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
         // Just make a few default things turn on
-        cpu.gfx[0][s] = if cpu.gfx[0][s] == 1 { 0 } else { 1 };
-        s = if s == C8_WIDTH - 1 { 0 } else { s + 1 };
-
+        cpu.gfx[0][0] = 1;
         cpu.gfx[0][C8_WIDTH - 1] = 1;
         cpu.gfx[C8_HEIGHT - 1][0] = 1;
         cpu.gfx[C8_HEIGHT - 1][C8_WIDTH - 1] = 1;
 
-        cpu.tick();
+        cpu.tick(true);
 
         // Copy the cpu's graphics array over to the rendering
         // system's copy
@@ -141,9 +123,4 @@ pub fn go() -> Result<(), String> {
     //        cpu.dump_regs();
 
     Ok(())
-}
-
-fn from_u8_rgb(r: u8, g: u8, b: u8) -> u32 {
-    let (r, g, b) = (r as u32, g as u32, b as u32);
-    (r << 16) | (g << 8) | b
 }

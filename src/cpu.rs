@@ -100,6 +100,7 @@ impl Cpu {
 
     #[allow(dead_code)]
     pub fn dump_regs(&mut self) {
+        println!("  i: {:?}", self.i);
         println!("  v: {:?}", self.v);
     }
 
@@ -127,14 +128,20 @@ impl Cpu {
 
     // Reads a word from memory located at program counter
     pub fn read_word(&mut self) -> u16 {
-        //TODO: Look into ByteOrder crate
+        let hi = self.memory[self.pc] as u16;
+        let lo = self.memory[self.pc + 1] as u16;
         let w: u16 = (u16::from(self.memory[self.pc]) << 8) | u16::from(self.memory[self.pc + 1]);
+        println!(
+            "Instruction read {:#X}:{:#X}: hi:{:#X} lo:{:#X} ",
+            self.pc, w, hi, lo
+        );
+
         w
     }
 
     // TODO: Output state control for sound/graphics
     // TODO: Read keypad on each tick
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self, dump_regs: bool) {
         // Get keypad if asked to get it
         if self.input.read_keys {
             for i in 0..self.input.keys.len() {
@@ -148,6 +155,9 @@ impl Cpu {
 
         let opcode = self.read_word();
         self.run_opcode(opcode);
+        if dump_regs {
+            self.dump_regs();
+        }
     }
 
     pub fn run_opcode(&mut self, opcode: u16) {
@@ -275,7 +285,6 @@ impl Cpu {
 
     // Set Vx = kk
     fn op_6xkk(&mut self, x: usize, kk: u8) -> ProgramCounter {
-        println!("Setting v[{}] to value: '{}'", x, kk);
         self.v[x] = kk;
         ProgramCounter::Next
     }
@@ -411,21 +420,40 @@ impl Cpu {
     //
     // TODO: Separate this into a display module?
     fn op_dxyn(&mut self, x: usize, y: usize, n: usize) -> ProgramCounter {
-        let vx: u8 = self.v[x]; // The x and y location to display
-        let vy: u8 = self.v[y];
+        // Determine the x/y location
+        let mut vx: u8 = self.v[x] & 64; // The x and y location to display
+        let mut vy: u8 = self.v[y] & 32;
 
-        // TODO: Read the slice and update gfx
+        // Set VF to zero to start
+        self.v[0x0F] = 0;
 
-        if vx as usize > C8_HEIGHT || vy as usize > C8_WIDTH {
-            return ProgramCounter::Next;
+        for _x in 0..(n - 1) {
+            // Get the sprite
+            let sprite: u8 = self.memory[self.i];
+            println!("Sprite: {:X?}", sprite);
+            // For each of the bits in this sprite, see what's going on
+            for _s in 0..7 {
+                let b = sprite << 1;
+                if b == 1 && self.gfx[vx as usize][vy as usize] == 1 {
+                    self.gfx[vx as usize][vy as usize] = 0;
+                    self.v[0x0F] = 1;
+                }
+                if b == 1 && self.gfx[vx as usize][vy as usize] == 0 {
+                    self.gfx[vx as usize][vy as usize] = 1;
+                }
+                vy = vy + 1;
+                if vy as usize > C8_WIDTH {
+                    break;
+                }
+            }
+            vx = vx + 1;
+            if vx as usize > C8_HEIGHT || vy as usize > C8_WIDTH {
+                return ProgramCounter::Next;
+            }
         }
 
-        self.gfx[vx as usize][vy as usize] = 1;
+        //self.gfx[vx as usize][vy as usize] = 1;
         self.gfx_updated = true;
-        ProgramCounter::Next
-    }
-
-    fn draw_byte(&mut self, byte: u8, x: usize, y: usize) -> ProgramCounter {
         ProgramCounter::Next
     }
 
