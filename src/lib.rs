@@ -22,11 +22,10 @@ pub use cpu::Cpu;
 pub const OPCODE_SIZE: usize = 2;
 pub const C8_WIDTH: usize = 64;
 pub const C8_HEIGHT: usize = 32;
-pub const DISP_SCALE: f64 = 10.0;
+pub const DISP_SCALE: f64 = 20.0;
 
 pub struct App {
     gl: GlGraphics, // OpenGL drawing backend.
-    rotation: f64,  // Rotation for the square.
 
     // TODO: Make this actually be the cpu.gfx
     vbuff: [[u8; C8_WIDTH as usize]; C8_HEIGHT as usize],
@@ -35,13 +34,13 @@ impl App {
     fn render(&mut self, args: &RenderArgs) {
         use graphics::*;
 
-        const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
+        const RED: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
         const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
         let pixel = rectangle::square(0.0, 0.0, DISP_SCALE);
 
         self.gl.draw(args.viewport(), |_c, gl| {
             // Clear the screen.
-            clear(GREEN, gl);
+            clear(RED, gl);
         });
 
         // for each of the pixels in gfx, draw them as a black dot on gl
@@ -61,10 +60,7 @@ impl App {
         }
     }
 
-    fn update(&mut self, args: &UpdateArgs) {
-        // Rotate 2 radians per second.
-        self.rotation += 4.0 * args.dt;
-    }
+    fn update(&mut self, args: &UpdateArgs) {}
 }
 
 //pub fn go() -> io::Result<()> {
@@ -88,33 +84,27 @@ pub fn go() -> Result<(), String> {
     // Create a new game and run it.
     let mut app = App {
         gl: GlGraphics::new(opengl),
-        rotation: 0.0,
         vbuff: [[0; C8_WIDTH]; C8_HEIGHT],
     };
 
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
-        // Just make a few default things turn on
-        cpu.gfx[0][0] = 1;
-        cpu.gfx[0][C8_WIDTH - 1] = 1;
-        cpu.gfx[C8_HEIGHT - 1][0] = 1;
-        cpu.gfx[C8_HEIGHT - 1][C8_WIDTH - 1] = 1;
-
         cpu.tick(true);
+
+        // Just make a few default things turn on
+        // cpu.gfx[0][0] = 1;
+        // cpu.gfx[0][C8_WIDTH - 1] = 1;
+        // cpu.gfx[C8_HEIGHT - 1][0] = 1;
+        // cpu.gfx[C8_HEIGHT - 1][C8_WIDTH - 1] = 1;
 
         // Copy the cpu's graphics array over to the rendering
         // system's copy
         app.vbuff = cpu.gfx;
 
-        if cpu.gfx_updated {
-            if let Some(args) = e.render_args() {
-                app.render(&args);
-            }
-
-            if let Some(args) = e.update_args() {
-                app.update(&args);
-            }
+        if let Some(args) = e.render_args() {
+            app.render(&args);
         }
+
         cpu.gfx_updated = false;
 
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
