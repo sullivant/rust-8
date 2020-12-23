@@ -406,49 +406,18 @@ impl Cpu {
     }
 
     // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
-    // From: http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#Dxyn
-    // The interpreter reads n bytes from memory, starting at the address stored in I. These bytes
-    // are then displayed as sprites on screen at coordinates (Vx, Vy). Sprites are XORed onto the
-    // existing screen. If this causes any pixels to be erased, VF is set to 1, otherwise it is set
-    // to 0. If the sprite is positioned so part of it is outside the coordinates of the display,
-    // it wraps around to the opposite side of the screen. See instruction 8xy3 for more
-    // information on XOR, and section 2.4, Display, for more information on the Chip-8 screen and
-    // sprites.
-    //
-    // I need to work up a method to display to the screen.  Right now this opcode is largely
-    // copied from Starrhorne's repo.
-    //
     // TODO: Separate this into a display module?
     fn op_dxyn(&mut self, x: usize, y: usize, n: usize) -> ProgramCounter {
-        // Determine the x/y location
-        let mut vx: u8 = self.v[x] & 64; // The x and y location to display
-        let mut vy: u8 = self.v[y] & 32;
-
         // Set VF to zero to start
         self.v[0x0F] = 0;
 
-        for _x in 0..(n - 1) {
-            // Get the sprite
-            let sprite: u8 = self.memory[self.i];
-            println!("Sprite: {:X?}", sprite);
-            // For each of the bits in this sprite, see what's going on
-            for _s in 0..7 {
-                let b = sprite << 1;
-                if b == 1 && self.gfx[vx as usize][vy as usize] == 1 {
-                    self.gfx[vx as usize][vy as usize] = 0;
-                    self.v[0x0F] = 1;
-                }
-                if b == 1 && self.gfx[vx as usize][vy as usize] == 0 {
-                    self.gfx[vx as usize][vy as usize] = 1;
-                }
-                vy = vy + 1;
-                if vy as usize > C8_WIDTH {
-                    break;
-                }
-            }
-            vx = vx + 1;
-            if vx as usize > C8_HEIGHT || vy as usize > C8_WIDTH {
-                return ProgramCounter::Next;
+        for byte in 0..n {
+            let y = (self.v[y] as usize + byte) % C8_HEIGHT;
+            for bit in 0..8 {
+                let x = (self.v[x] as usize + bit) % C8_WIDTH;
+                let color = (self.memory[self.i + byte] >> (7 - bit)) & 1;
+                self.v[0x0F] |= color & self.gfx[y][x];
+                self.gfx[y][x] ^= color;
             }
         }
 
