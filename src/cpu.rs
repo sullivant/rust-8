@@ -102,6 +102,7 @@ impl Cpu {
     pub fn dump_regs(&mut self) {
         println!("  i: {:?}", self.i);
         println!("  v: {:?}", self.v);
+        println!(" sp: {:?}", self.stack);
     }
 
     #[allow(dead_code)]
@@ -142,16 +143,12 @@ impl Cpu {
     // TODO: Output state control for sound/graphics
     // TODO: Read keypad on each tick
     pub fn tick(&mut self, dump_regs: bool) {
-        // Get keypad if asked to get it
-        if self.input.read_keys {
-            for i in 0..self.input.keys.len() {
-                if self.input.keys[i] {
-                    self.input.read_keys = false;
-                    self.v[self.input.key_target] = i as u8;
-                    break;
-                }
-            }
-        }
+        // Decrement the delay counter if it is above zero
+        self.delay_timer = if self.delay_timer > 0 {
+            self.delay_timer - 1
+        } else {
+            0
+        };
 
         let opcode = self.read_word();
         self.run_opcode(opcode);
@@ -200,7 +197,7 @@ impl Cpu {
             (0x05, _, _, 0x00) => self.op_5xy0(x, y),   // Skip if Vx = Vy
             (0x06, _, _, _) => self.op_6xkk(x, kk),     // Puts value kk into register Vx
             (0x07, _, _, _) => self.op_7xkk(x, kk),     // Sets Vx = Vx + kk with overflow
-            (0x08, _, _, 0x00) => self.op_8xy0(x, y),   // Puts value Vx into Vy
+            (0x08, _, _, 0x00) => self.op_8xy0(x, y),   // Puts value Vy into Vx
             (0x08, _, _, 0x01) => self.op_8xy1(x, y),   // Bitwise OR of Vx and Vy; result in Vx
             (0x08, _, _, 0x02) => self.op_8xy2(x, y),   // Bitwise AND of Vx and Vy; result in Vx
             (0x08, _, _, 0x03) => self.op_8xy3(x, y),   // Bitwise XOR of Vx and Vy; result in Vx
@@ -216,8 +213,10 @@ impl Cpu {
             (0x0D, _, _, _) => self.op_dxyn(x, y, n),   // Display n-byte sprite
             (0x0E, _, 0x09, 0x0E) => self.op_ex9e(x),   // Skip if key at v[x] is pressed
             (0x0E, _, 0x0A, 0x01) => self.op_exa1(x),   // Skip if key at v[x] is not pressed
-            (0x0F, _, 0x00, 0x07) => self.op_fx07(x),   // Set delay timer value
+            (0x0F, _, 0x00, 0x07) => self.op_fx07(x),   // Vx = Dt value
             (0x0F, _, 0x00, 0x0A) => self.op_fx0a(x),   // Store keypress into v[x]
+            (0x0F, _, 0x01, 0x05) => self.op_fx15(x),   // Dt = Vx
+            (0x0F, _, 0x01, 0x08) => self.op_fx18(x),   // St = Vx
             _ => ProgramCounter::Next,
         };
 
@@ -242,9 +241,9 @@ impl Cpu {
 
     // Jump program counter to address at stack[sp] then subtract 1 from sp
     fn op_00ee(&mut self) -> ProgramCounter {
-        let p = self.stack[self.sp];
+        //let p = self.sp;
         self.sp -= 1;
-        ProgramCounter::Jump(p)
+        ProgramCounter::Jump(self.stack[self.sp])
     }
 
     // PC Jumps to location NNN
@@ -254,8 +253,8 @@ impl Cpu {
 
     // Call subroutine at NNN
     fn op_2nnn(&mut self, nnn: usize) -> ProgramCounter {
+        self.stack[self.sp] = self.pc + OPCODE_SIZE;
         self.sp += 1;
-        self.stack[self.sp] = self.pc;
         ProgramCounter::Jump(nnn)
     }
 
@@ -300,7 +299,7 @@ impl Cpu {
 
     // Puts Vy into Vx
     fn op_8xy0(&mut self, x: usize, y: usize) -> ProgramCounter {
-        self.v[y] = self.v[x];
+        self.v[x] = self.v[y];
         ProgramCounter::Next
     }
 
@@ -453,6 +452,18 @@ impl Cpu {
     fn op_fx0a(&mut self, x: usize) -> ProgramCounter {
         self.input.read_keys = true; // Tell tick() to read a key
         self.input.key_target = x; // And store it into V[x]
+        ProgramCounter::Next
+    }
+
+    // Set Dt = Vx
+    fn op_fx15(&mut self, x: usize) -> ProgramCounter {
+        self.delay_timer = self.v[x];
+        ProgramCounter::Next
+    }
+
+    // Set sound timer = Vx
+    fn op_fx18(&mut self, x: usize) -> ProgramCounter {
+        self.sound_timer = self.v[x];
         ProgramCounter::Next
     }
 }

@@ -66,7 +66,7 @@ impl App {
 //pub fn go() -> io::Result<()> {
 pub fn go() -> Result<(), String> {
     let mut cpu = Cpu::new();
-    cpu.load_rom("./data/IBM".to_string()).unwrap();
+    cpu.load_rom("./data/C8TEST".to_string()).unwrap();
 
     // Change this to OpenGL::V2_1 if not working.
     let opengl = OpenGL::V3_2;
@@ -89,13 +89,70 @@ pub fn go() -> Result<(), String> {
 
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
-        cpu.tick(true);
+        if cpu.input.read_keys {
+            println!("Reading keys");
+            // Get keypad if asked to get it; waiting until we get it.
+            if let Some(Button::Keyboard(key)) = e.press_args() {
+                let key_pressed = match key {
+                    Key::NumPad1 => Some(0x01),
+                    Key::NumPad2 => Some(0x02),
+                    Key::NumPad3 => Some(0x03),
+                    Key::NumPad4 => Some(0x0c),
+                    Key::Q => Some(0x04),
+                    Key::W => Some(0x05),
+                    Key::E => Some(0x06),
+                    Key::R => Some(0x0d),
+                    Key::A => Some(0x07),
+                    Key::S => Some(0x08),
+                    Key::D => Some(0x09),
+                    Key::F => Some(0x0e),
+                    Key::Z => Some(0x0a),
+                    Key::X => Some(0x00),
+                    Key::C => Some(0x0b),
+                    Key::V => Some(0x0f),
+                    _ => None,
+                };
+                if let Some(i) = key_pressed {
+                    println!("Key pressed.");
+                    cpu.input.keys[i] = true;
+                }
+            };
+            if let Some(Button::Keyboard(key)) = e.release_args() {
+                let key_pressed = match key {
+                    Key::NumPad1 => Some(0x01),
+                    Key::NumPad2 => Some(0x02),
+                    Key::NumPad3 => Some(0x03),
+                    Key::NumPad4 => Some(0x0c),
+                    Key::Q => Some(0x04),
+                    Key::W => Some(0x05),
+                    Key::E => Some(0x06),
+                    Key::R => Some(0x0d),
+                    Key::A => Some(0x07),
+                    Key::S => Some(0x08),
+                    Key::D => Some(0x09),
+                    Key::F => Some(0x0e),
+                    Key::Z => Some(0x0a),
+                    Key::X => Some(0x00),
+                    Key::C => Some(0x0b),
+                    Key::V => Some(0x0f),
+                    _ => None,
+                };
+                if let Some(i) = key_pressed {
+                    println!("Key released.");
+                    cpu.input.keys[i] = false;
+                }
+            };
+            for i in 0..cpu.input.keys.len() {
+                if cpu.input.keys[i] {
+                    cpu.input.read_keys = false;
+                    cpu.v[cpu.input.key_target] = i as u8;
+                    break;
+                }
+            }
+            continue;
+        }
 
-        // Just make a few default things turn on
-        // cpu.gfx[0][0] = 1;
-        // cpu.gfx[0][C8_WIDTH - 1] = 1;
-        // cpu.gfx[C8_HEIGHT - 1][0] = 1;
-        // cpu.gfx[C8_HEIGHT - 1][C8_WIDTH - 1] = 1;
+        cpu.tick(true);
 
         // Copy the cpu's graphics array over to the rendering
         // system's copy

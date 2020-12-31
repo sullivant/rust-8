@@ -444,6 +444,6 @@ fn test_op_fx0a() {
     assert_eq!(cpu.input.read_keys, true);
     assert_eq!(cpu.input.key_target, 0x01);
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
-    cpu.tick();
+    cpu.tick(false);
     assert_eq!(cpu.v[1], 2); // Key 2 (the pressed one) was stored in v[1]
 }
