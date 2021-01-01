@@ -217,6 +217,11 @@ impl Cpu {
             (0x0F, _, 0x00, 0x0A) => self.op_fx0a(x),   // Store keypress into v[x]
             (0x0F, _, 0x01, 0x05) => self.op_fx15(x),   // Dt = Vx
             (0x0F, _, 0x01, 0x08) => self.op_fx18(x),   // St = Vx
+            (0x0F, _, 0x01, 0x0E) => self.op_fx1e(x),   // I = I + Vx.
+            (0x0F, _, 0x02, 0x09) => self.op_fx29(x),   // I = location of sprite for digit Vx.
+            (0x0F, _, 0x03, 0x03) => self.op_fx33(x), // BCD rep of Vx in memory locations I, I+1, and I+2.
+            (0x0F, _, 0x05, 0x05) => self.op_fx55(x), // Store V0 through Vx in memory starting at I.
+            (0x0F, _, 0x06, 0x05) => self.op_fx65(x), // Read V0 through Vx from memory starting at I.
             _ => ProgramCounter::Next,
         };
 
@@ -465,5 +470,55 @@ impl Cpu {
     fn op_fx18(&mut self, x: usize) -> ProgramCounter {
         self.sound_timer = self.v[x];
         ProgramCounter::Next
+    }
+
+    // I = I + Vx
+    fn op_fx1e(&mut self, x: usize) -> ProgramCounter {
+        self.i = self.i + self.v[x] as usize;
+        ProgramCounter::Next
+    }
+
+    // I = location of sprite for digit Vx. Sprites are 5 bytes long each
+    fn op_fx29(&mut self, x: usize) -> ProgramCounter {
+        self.i = (self.v[x] as usize) * 5;
+        ProgramCounter::Next
+    }
+
+    // BCD representation of Vx in memory locations I, I+1, and I+2
+    fn op_fx33(&mut self, x: usize) -> ProgramCounter {
+        self.memory[self.i] = self.get_digit(self.v[x], 3); // hundreds
+        self.memory[self.i + 1] = self.get_digit(self.v[x], 2); // tens
+        self.memory[self.i + 2] = self.get_digit(self.v[x], 1); // ones
+        ProgramCounter::Next
+    }
+
+    // Store registers V0 through Vx in memory starting at location I.
+    fn op_fx55(&mut self, x: usize) -> ProgramCounter {
+        for l in 0..x + 1 {
+            self.memory[self.i + l] = self.v[l];
+        }
+        ProgramCounter::Next
+    }
+
+    // Read registers V0 through Vx from memory starting at location I.
+    fn op_fx65(&mut self, x: usize) -> ProgramCounter {
+        for l in 0..x + 1 {
+            self.v[l] = self.memory[self.i + l];
+        }
+        ProgramCounter::Next
+    }
+
+    pub fn get_digit(&mut self, number: u8, digit: usize) -> u8 {
+        let vec: Vec<u32> = number
+            .to_string()
+            .chars()
+            .map(|c| c.to_digit(10).unwrap())
+            .rev()
+            .collect();
+
+        if digit > vec.len() {
+            return 0;
+        }
+        vec[digit - 1] as u8
     }
 }

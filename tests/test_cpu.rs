@@ -2,6 +2,15 @@ extern crate lib;
 use lib::{Cpu, OPCODE_SIZE};
 
 #[test]
+fn test_get_digit() {
+    let mut cpu = Cpu::new();
+    assert_eq!(cpu.get_digit(123, 1), 3);
+    assert_eq!(cpu.get_digit(123, 2), 2);
+    assert_eq!(cpu.get_digit(123, 3), 1);
+    assert_eq!(cpu.get_digit(123, 4), 0);
+}
+
+#[test]
 fn test_cpu_default() {
     let mut cpu = Cpu::new();
     cpu.pc = 0x201;
