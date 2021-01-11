@@ -89,70 +89,69 @@ pub fn go() -> Result<(), String> {
 
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
-        //if cpu.input.read_keys {
-        //println!("Reading keys");
-        // Get keypad if asked to get it; waiting until we get it.
-        if let Some(Button::Keyboard(key)) = e.press_args() {
-            let key_pressed = match key {
-                Key::NumPad1 => Some(0x01),
-                Key::NumPad2 => Some(0x02),
-                Key::NumPad3 => Some(0x03),
-                Key::NumPad4 => Some(0x0c),
-                Key::Q => Some(0x04),
-                Key::W => Some(0x05),
-                Key::E => Some(0x06),
-                Key::R => Some(0x0d),
-                Key::A => Some(0x07),
-                Key::S => Some(0x08),
-                Key::D => Some(0x09),
-                Key::F => Some(0x0e),
-                Key::Z => Some(0x0a),
-                Key::X => Some(0x00),
-                Key::C => Some(0x0b),
-                Key::V => Some(0x0f),
-                _ => None,
+        if cpu.input.read_keys {
+            // Get keypad if asked to get it; waiting until we get it.
+            if let Some(Button::Keyboard(key)) = e.press_args() {
+                let key_pressed = match key {
+                    Key::NumPad1 => Some(0x01),
+                    Key::NumPad2 => Some(0x02),
+                    Key::NumPad3 => Some(0x03),
+                    Key::NumPad4 => Some(0x0c),
+                    Key::Q => Some(0x04),
+                    Key::W => Some(0x05),
+                    Key::E => Some(0x06),
+                    Key::R => Some(0x0d),
+                    Key::A => Some(0x07),
+                    Key::S => Some(0x08),
+                    Key::D => Some(0x09),
+                    Key::F => Some(0x0e),
+                    Key::Z => Some(0x0a),
+                    Key::X => Some(0x00),
+                    Key::C => Some(0x0b),
+                    Key::V => Some(0x0f),
+                    _ => None,
+                };
+                if let Some(i) = key_pressed {
+                    cpu.input.keys[i] = true;
+                }
             };
-            if let Some(i) = key_pressed {
-                println!("Key pressed.");
-                cpu.input.keys[i] = true;
-            }
-        };
-        if let Some(Button::Keyboard(key)) = e.release_args() {
-            let key_pressed = match key {
-                Key::NumPad1 => Some(0x01),
-                Key::NumPad2 => Some(0x02),
-                Key::NumPad3 => Some(0x03),
-                Key::NumPad4 => Some(0x0c),
-                Key::Q => Some(0x04),
-                Key::W => Some(0x05),
-                Key::E => Some(0x06),
-                Key::R => Some(0x0d),
-                Key::A => Some(0x07),
-                Key::S => Some(0x08),
-                Key::D => Some(0x09),
-                Key::F => Some(0x0e),
-                Key::Z => Some(0x0a),
-                Key::X => Some(0x00),
-                Key::C => Some(0x0b),
-                Key::V => Some(0x0f),
-                _ => None,
+            if let Some(Button::Keyboard(key)) = e.release_args() {
+                let key_pressed = match key {
+                    Key::NumPad1 => Some(0x01),
+                    Key::NumPad2 => Some(0x02),
+                    Key::NumPad3 => Some(0x03),
+                    Key::NumPad4 => Some(0x0c),
+                    Key::Q => Some(0x04),
+                    Key::W => Some(0x05),
+                    Key::E => Some(0x06),
+                    Key::R => Some(0x0d),
+                    Key::A => Some(0x07),
+                    Key::S => Some(0x08),
+                    Key::D => Some(0x09),
+                    Key::F => Some(0x0e),
+                    Key::Z => Some(0x0a),
+                    Key::X => Some(0x00),
+                    Key::C => Some(0x0b),
+                    Key::V => Some(0x0f),
+                    _ => None,
+                };
+                if let Some(i) = key_pressed {
+                    cpu.input.keys[i] = false;
+                }
             };
-            if let Some(i) = key_pressed {
-                println!("Key released.");
-                cpu.input.keys[i] = false;
-            }
-        };
-        for i in 0..cpu.input.keys.len() {
-            if cpu.input.keys[i] {
-                cpu.input.read_keys = false;
-                cpu.v[cpu.input.key_target] = i as u8;
-                break;
-            }
-        }
-        //continue;
-        //}
 
-        cpu.tick(true);
+            // Store the key pressed into the expected key_target
+            for i in 0..cpu.input.keys.len() {
+                if cpu.input.keys[i] {
+                    cpu.input.read_keys = false;
+                    cpu.v[cpu.input.key_target] = i as u8;
+                    break;
+                }
+            }
+            //continue;
+        }
+
+        cpu.tick(false);
 
         // Copy the cpu's graphics array over to the rendering
         // system's copy

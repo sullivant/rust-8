@@ -128,14 +128,16 @@ impl Cpu {
     }
 
     // Reads a word from memory located at program counter
-    pub fn read_word(&mut self) -> u16 {
+    pub fn read_word(&mut self, dump_regs: bool) -> u16 {
         let hi = self.memory[self.pc] as u16;
         let lo = self.memory[self.pc + 1] as u16;
         let w: u16 = (u16::from(self.memory[self.pc]) << 8) | u16::from(self.memory[self.pc + 1]);
-        println!(
-            "Instruction read {:#X}:{:#X}: hi:{:#X} lo:{:#X} ",
-            self.pc, w, hi, lo
-        );
+        if dump_regs {
+            println!(
+                "Instruction read {:#X}:{:#X}: hi:{:#X} lo:{:#X} ",
+                self.pc, w, hi, lo
+            );
+        }
 
         w
     }
@@ -150,14 +152,14 @@ impl Cpu {
             0
         };
 
-        let opcode = self.read_word();
-        self.run_opcode(opcode);
+        let opcode = self.read_word(dump_regs);
+        self.run_opcode(opcode, dump_regs);
         if dump_regs {
             self.dump_regs();
         }
     }
 
-    pub fn run_opcode(&mut self, opcode: u16) {
+    pub fn run_opcode(&mut self, opcode: u16, dump_regs: bool) {
         // Break the opcode into its distinct parts so we can determine what
         // to do with what and where
         let nibbles = (
@@ -172,12 +174,14 @@ impl Cpu {
         let y = nibbles.2 as usize;
         let n = nibbles.3 as usize;
 
-        println!("Running opcode: {:X}", opcode);
-        println!("  Nibbles: {:?}", nibbles);
-        println!(
-            "  nnn:{} / kk:{}|{:X} / x,y,n: {},{},{}",
-            nnn, kk, kk, x, y, n
-        );
+        if dump_regs {
+            println!("Running opcode: {:X}", opcode);
+            println!("  Nibbles: {:?}", nibbles);
+            println!(
+                "  nnn:{} / kk:{}|{:X} / x,y,n: {},{},{}",
+                nnn, kk, kk, x, y, n
+            );
+        }
 
         //After each runcode we need to update our program counter so we can read
         //a specific opcode out of ram.  Sometimes it's just "the next one", sometimes
@@ -433,6 +437,7 @@ impl Cpu {
     // Skip next instruction if key with the value of Vx is pressed.
     fn op_ex9e(&mut self, x: usize) -> ProgramCounter {
         if self.input.keys[self.v[x] as usize] {
+            println!("Skipping if key at v[{}] is pressed", x);
             return ProgramCounter::Skip;
         }
 
@@ -442,6 +447,7 @@ impl Cpu {
     // Skip next instruction if key with the value of Vx is not pressed.
     fn op_exa1(&mut self, x: usize) -> ProgramCounter {
         if !self.input.keys[self.v[x] as usize] {
+            println!("Skipping if key at v[{}] is not pressed", x);
             return ProgramCounter::Skip;
         }
         ProgramCounter::Next
@@ -457,6 +463,7 @@ impl Cpu {
     fn op_fx0a(&mut self, x: usize) -> ProgramCounter {
         self.input.read_keys = true; // Tell tick() to read a key
         self.input.key_target = x; // And store it into V[x]
+        println!("~~ Reading keys and storing in v[{}]", x);
         ProgramCounter::Next
     }
 
