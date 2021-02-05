@@ -1,14 +1,12 @@
-extern crate glutin_window;
 extern crate graphics;
 extern crate opengl_graphics;
 extern crate piston;
+extern crate piston_window;
 
-use glutin_window::GlutinWindow as Window;
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::event_loop::{EventSettings, Events};
-//use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
 use piston::input::*;
-use piston::window::WindowSettings;
+use piston_window::*;
 use std::time::Duration;
 use structopt::StructOpt;
 
@@ -74,8 +72,8 @@ pub fn go() -> Result<(), String> {
     rom_file += &args.rom;
 
     let mut cpu = Cpu::new();
-    match cpu.load_rom(rom_file) {
-        Ok(_) => println!("Loaded rom file:"),
+    match cpu.load_rom(rom_file.clone()) {
+        Ok(_) => println!("Loaded rom file: {}", rom_file),
         Err(err) => {
             println!("Unable to load rom file: {}", err);
             return Ok(());
@@ -85,12 +83,13 @@ pub fn go() -> Result<(), String> {
     // Change this to OpenGL::V2_1 if not working.
     let opengl = OpenGL::V3_2;
 
-    // Create an Glutin window.
-    let mut window: Window = WindowSettings::new(
+    // Create a Glutin window.
+    let mut main_window: PistonWindow = WindowSettings::new(
         "rust-8",
         [C8_WIDTH as f64 * DISP_SCALE, C8_HEIGHT as f64 * DISP_SCALE],
     )
     .graphics_api(opengl)
+    .vsync(true)
     .exit_on_esc(true)
     .build()
     .unwrap();
@@ -100,71 +99,9 @@ pub fn go() -> Result<(), String> {
         gl: GlGraphics::new(opengl),
         vbuff: [[0; C8_WIDTH]; C8_HEIGHT],
     };
-
     let mut events = Events::new(EventSettings::new());
-    while let Some(e) = events.next(&mut window) {
-        if cpu.input.read_keys {
-            // Get keypad if asked to get it; waiting until we get it.
-            if let Some(Button::Keyboard(key)) = e.press_args() {
-                let key_pressed = match key {
-                    Key::NumPad1 => Some(0x01),
-                    Key::NumPad2 => Some(0x02),
-                    Key::NumPad3 => Some(0x03),
-                    Key::NumPad4 => Some(0x0c),
-                    Key::Q => Some(0x04),
-                    Key::W => Some(0x05),
-                    Key::E => Some(0x06),
-                    Key::R => Some(0x0d),
-                    Key::A => Some(0x07),
-                    Key::S => Some(0x08),
-                    Key::D => Some(0x09),
-                    Key::F => Some(0x0e),
-                    Key::Z => Some(0x0a),
-                    Key::X => Some(0x00),
-                    Key::C => Some(0x0b),
-                    Key::V => Some(0x0f),
-                    _ => None,
-                };
-                if let Some(i) = key_pressed {
-                    cpu.input.keys[i] = true;
-                }
-            };
-            if let Some(Button::Keyboard(key)) = e.release_args() {
-                let key_pressed = match key {
-                    Key::NumPad1 => Some(0x01),
-                    Key::NumPad2 => Some(0x02),
-                    Key::NumPad3 => Some(0x03),
-                    Key::NumPad4 => Some(0x0c),
-                    Key::Q => Some(0x04),
-                    Key::W => Some(0x05),
-                    Key::E => Some(0x06),
-                    Key::R => Some(0x0d),
-                    Key::A => Some(0x07),
-                    Key::S => Some(0x08),
-                    Key::D => Some(0x09),
-                    Key::F => Some(0x0e),
-                    Key::Z => Some(0x0a),
-                    Key::X => Some(0x00),
-                    Key::C => Some(0x0b),
-                    Key::V => Some(0x0f),
-                    _ => None,
-                };
-                if let Some(i) = key_pressed {
-                    cpu.input.keys[i] = false;
-                }
-            };
 
-            // Store the key pressed into the expected key_target
-            for i in 0..cpu.input.keys.len() {
-                if cpu.input.keys[i] {
-                    cpu.input.read_keys = false;
-                    cpu.v[cpu.input.key_target] = i as u8;
-                    break;
-                }
-            }
-            //continue;
-        }
-
+    while let Some(e) = events.next(&mut main_window) {
         cpu.tick(false);
 
         // Copy the cpu's graphics array over to the rendering
@@ -178,7 +115,7 @@ pub fn go() -> Result<(), String> {
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 600));
     }
 
-    //        cpu.dump_regs();
+    println!("Exiting application.");
 
     Ok(())
 }
