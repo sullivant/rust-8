@@ -27,7 +27,7 @@ fn test_op_00e0() {
     cpu.gfx[0][0] = 1;
     assert_eq!(1, cpu.gfx[0][0]);
 
-    cpu.run_opcode(0x00E0);
+    cpu.run_opcode(0x00E0, Some(false));
 
     assert_eq!(0, cpu.gfx[0][0]);
 }
@@ -38,9 +38,9 @@ fn test_op_00ee() {
 
     cpu.sp = 1;
     cpu.stack[cpu.sp] = 0x201;
-    let target = cpu.stack[cpu.sp]; // where pc should end up
+    let target = cpu.stack[cpu.sp - 1]; // where pc should end up
 
-    cpu.run_opcode(0x00EE);
+    cpu.run_opcode(0x00EE, Some(false));
 
     assert_eq!(target, cpu.pc);
 }
@@ -49,7 +49,7 @@ fn test_op_00ee() {
 fn test_op_1nnn() {
     let mut cpu = Cpu::new();
 
-    cpu.run_opcode(0x1201); // PC should jump to 0x201
+    cpu.run_opcode(0x1201, Some(false)); // PC should jump to 0x201
 
     assert_eq!(cpu.pc, 0x201);
 }
@@ -58,13 +58,13 @@ fn test_op_1nnn() {
 fn test_op_2nnn() {
     let mut cpu = Cpu::new();
 
-    cpu.run_opcode(0x2201);
+    cpu.run_opcode(0x2201, Some(false));
 
-    // sp incremented
+    // sp incremented after opcode has run
     assert_eq!(cpu.sp, 1);
 
-    // pc stored on stack at cpu.sp
-    assert_eq!(cpu.stack[cpu.sp], 0x200);
+    // pc stored on stack at the original cpu.sp
+    assert_eq!(cpu.stack[0], 0x200 + OPCODE_SIZE);
 
     // pc set to nnn
     assert_eq!(cpu.pc, 0x201);
@@ -79,12 +79,12 @@ fn test_op_3xkk() {
     cpu.v[x] = 3 as u8;
 
     // After skip, cpu.pc should have moved up two opcode size
-    cpu.run_opcode(0x3103);
+    cpu.run_opcode(0x3103, Some(false));
     assert_eq!(cpu.pc, p + (OPCODE_SIZE * 2));
 
     // Should not skip, cpu.pc should be up one opcode size
     p = cpu.pc;
-    cpu.run_opcode(0x3104); // 3 != 4
+    cpu.run_opcode(0x3104, Some(false)); // 3 != 4
     assert_eq!(cpu.pc, p + OPCODE_SIZE);
 }
 
@@ -98,12 +98,12 @@ fn test_op_4xkk() {
     cpu.v[x] = 3 as u8;
 
     // Should skip
-    cpu.run_opcode(0x4101); // 3 != 1
+    cpu.run_opcode(0x4101, Some(false)); // 3 != 1
     assert_eq!(cpu.pc, p + (OPCODE_SIZE * 2));
 
     // Should not skip
     p = cpu.pc;
-    cpu.run_opcode(0x4103); // 3 = 1
+    cpu.run_opcode(0x4103, Some(false)); // 3 = 1
     assert_eq!(cpu.pc, p + OPCODE_SIZE);
 }
 
@@ -116,11 +116,11 @@ fn test_op_5xy0() {
     cpu.v[1] = 1;
 
     let mut pc = cpu.pc;
-    cpu.run_opcode(0x5010); // v[0] == v[1] ( should skip )
+    cpu.run_opcode(0x5010, Some(false)); // v[0] == v[1] ( should skip )
     assert_eq!(cpu.pc, pc + (OPCODE_SIZE * 2));
 
     pc = cpu.pc;
-    cpu.run_opcode(0x5020); // v[0] != v[2] ( should not skip )
+    cpu.run_opcode(0x5020, Some(false)); // v[0] != v[2] ( should not skip )
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
 }
 
@@ -130,7 +130,7 @@ fn test_op_6xkk() {
     let mut cpu = Cpu::new();
 
     let pc = cpu.pc;
-    cpu.run_opcode(0x61F0);
+    cpu.run_opcode(0x61F0, Some(false));
 
     // Vx should = F0
     assert_eq!(cpu.v[1], 0xF0);
@@ -146,30 +146,30 @@ fn test_op_7xkk() {
     assert_eq!(cpu.v[x], 0x00);
 
     // Test add without overflow
-    cpu.run_opcode(0x7001);
+    cpu.run_opcode(0x7001, Some(false));
     assert_eq!(cpu.v[x], 0x01);
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
 
     // Test add with overflow on a different register
     x = 1;
     pc = cpu.pc;
-    cpu.run_opcode(0x71ff);
+    cpu.run_opcode(0x71ff, Some(false));
     assert_eq!(cpu.v[x], u8::max_value());
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
 
     pc = cpu.pc;
-    cpu.run_opcode(0x7102);
+    cpu.run_opcode(0x7102, Some(false));
     assert_eq!(cpu.v[x], 0x01);
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
 }
 
 #[test]
 fn test_op_8xy0() {
-    // Puts value Vx into Vy
+    // Puts value Vy into Vx
     let mut cpu = Cpu::new();
     let p = cpu.pc;
-    cpu.v[0] = 0x05;
-    cpu.run_opcode(0x8010);
+    cpu.v[1] = 0x05;
+    cpu.run_opcode(0x8010, Some(false));
 
     assert_eq!(0x05, cpu.v[0]);
     assert_eq!(cpu.v[0], cpu.v[1]);
@@ -186,7 +186,7 @@ fn test_op_8xy1() {
 
     let pc = cpu.pc;
     // Should bitwise OR v[0] and v[1]
-    cpu.run_opcode(0x8011);
+    cpu.run_opcode(0x8011, Some(false));
 
     assert_eq!(cpu.v[0], 0b1001);
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
@@ -202,7 +202,7 @@ fn test_op_8xy2() {
     cpu.v[1] = 0b1011;
 
     // Should bitwise OR v[0] and v[1]
-    cpu.run_opcode(0x8012);
+    cpu.run_opcode(0x8012, Some(false));
 
     assert_eq!(cpu.v[0], 0b1001);
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
@@ -219,7 +219,7 @@ fn test_op_8xy3() {
     cpu.v[1] = 0b1011;
 
     // Should bitwise OR v[0] and v[1]
-    cpu.run_opcode(0x8013);
+    cpu.run_opcode(0x8013, Some(false));
     assert_eq!(cpu.v[0], 0b0110);
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
 }
@@ -233,7 +233,7 @@ fn test_op_8xy4() {
     // Test with overflow
     cpu.v[0] = 0xF0;
     cpu.v[1] = 0xF0;
-    cpu.run_opcode(0x8014);
+    cpu.run_opcode(0x8014, Some(false));
     assert_eq!(cpu.v[0], 0xE0);
     assert_eq!(cpu.v[0xF], 1);
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
@@ -242,7 +242,7 @@ fn test_op_8xy4() {
     pc = cpu.pc;
     cpu.v[2] = 0x05;
     cpu.v[3] = 0x02;
-    cpu.run_opcode(0x8234);
+    cpu.run_opcode(0x8234, Some(false));
     assert_eq!(cpu.v[2], 0x07);
     assert_eq!(cpu.v[0xF], 0);
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
@@ -257,7 +257,7 @@ fn test_op_8xy5() {
     // Test with overflow
     cpu.v[0] = 0x08;
     cpu.v[1] = 0x0A;
-    cpu.run_opcode(0x8015);
+    cpu.run_opcode(0x8015, Some(false));
     assert_eq!(cpu.v[0], 0xFE);
     assert_eq!(cpu.v[0xF], 0);
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
@@ -266,7 +266,7 @@ fn test_op_8xy5() {
     pc = cpu.pc;
     cpu.v[2] = 0x05;
     cpu.v[3] = 0x02;
-    cpu.run_opcode(0x8235);
+    cpu.run_opcode(0x8235, Some(false));
     assert_eq!(cpu.v[2], 0x03);
     assert_eq!(cpu.v[0xF], 1);
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
@@ -278,14 +278,14 @@ fn test_op_8x06() {
 
     let mut pc = cpu.pc;
     cpu.v[0] = 4;
-    cpu.run_opcode(0x8006); // cpu.v[0] should = 2; with v[f] = 0;
+    cpu.run_opcode(0x8006, Some(false)); // cpu.v[0] should = 2; with v[f] = 0;
     assert_eq!(cpu.v[0], 2);
     assert_eq!(cpu.v[0xF], 0);
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
 
     pc = cpu.pc;
     cpu.v[4] = 5;
-    cpu.run_opcode(0x8406); // cpu.v[4] should = 2; with v[f] = 1;
+    cpu.run_opcode(0x8406, Some(false)); // cpu.v[4] should = 2; with v[f] = 1;
     assert_eq!(cpu.v[4], 2);
     assert_eq!(cpu.v[0xF], 1);
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
@@ -299,7 +299,7 @@ fn test_op_8xy7() {
     let mut pc = cpu.pc;
     cpu.v[0] = 0x05;
     cpu.v[1] = 0x06;
-    cpu.run_opcode(0x8017);
+    cpu.run_opcode(0x8017, Some(false));
 
     assert_eq!(cpu.v[0x0F], 1);
     assert_eq!(cpu.v[0], 0x01);
@@ -309,7 +309,7 @@ fn test_op_8xy7() {
     pc = cpu.pc;
     cpu.v[0] = 0x08;
     cpu.v[1] = 0x03;
-    cpu.run_opcode(0x8017);
+    cpu.run_opcode(0x8017, Some(false));
 
     assert_eq!(cpu.v[0x0F], 0);
     assert_eq!(cpu.v[0], 251);
@@ -322,7 +322,7 @@ fn test_op_8x0e() {
 
     let mut pc = cpu.pc;
     cpu.v[0] = 0x04;
-    cpu.run_opcode(0x800E);
+    cpu.run_opcode(0x800E, Some(false));
 
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
     assert_eq!(cpu.v[0x0F], 0);
@@ -330,7 +330,7 @@ fn test_op_8x0e() {
 
     pc = cpu.pc;
     cpu.v[1] = 0x82; // 0b10000010
-    cpu.run_opcode(0x810E);
+    cpu.run_opcode(0x810E, Some(false));
 
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
     assert_eq!(cpu.v[0x0F], 1);
@@ -344,14 +344,14 @@ fn test_op_9xy0() {
     let mut pc = cpu.pc;
     cpu.v[0] = 0x04;
     cpu.v[1] = 0x04;
-    cpu.run_opcode(0x9010);
+    cpu.run_opcode(0x9010, Some(false));
 
     assert_eq!(cpu.pc, pc + OPCODE_SIZE); // Should not skip
 
     pc = cpu.pc;
     cpu.v[0] = 0x04;
     cpu.v[1] = 0x01;
-    cpu.run_opcode(0x9010);
+    cpu.run_opcode(0x9010, Some(false));
 
     assert_eq!(cpu.pc, pc + (OPCODE_SIZE * 2)); // Should skip
 }
@@ -361,7 +361,7 @@ fn test_op_annn() {
     let mut cpu = Cpu::new();
 
     let pc = cpu.pc;
-    cpu.run_opcode(0xA0FF); // Should load 123 into register i
+    cpu.run_opcode(0xA0FF, Some(false)); // Should load 123 into register i
 
     assert_eq!(cpu.i, 255 as usize);
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
@@ -372,7 +372,7 @@ fn test_op_bnnn() {
     let mut cpu = Cpu::new();
 
     cpu.v[0] = 1;
-    cpu.run_opcode(0xB0CA); // Should jump to 0x0CA + v[0]
+    cpu.run_opcode(0xB0CA, Some(false)); // Should jump to 0x0CA + v[0]
     assert_eq!(cpu.pc, 0x0CB);
 }
 
@@ -380,7 +380,7 @@ fn test_op_bnnn() {
 fn test_op_cxkk() {
     let mut cpu = Cpu::new();
     let pc = cpu.pc;
-    cpu.run_opcode(0xC001); // set v[0] to random + 01
+    cpu.run_opcode(0xC001, Some(false)); // set v[0] to random + 01
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
 
     // TODO: Figure out a way to test the RNG
@@ -400,14 +400,14 @@ fn test_op_ex9e() {
     let mut pc = cpu.pc;
     cpu.input.keys[0x00] = true;
     cpu.v[0] = 0x00;
-    cpu.run_opcode(0xE09E); // Check for press at key v[0] (0)
+    cpu.run_opcode(0xE09E, Some(false)); // Check for press at key v[0] (0)
     assert_eq!(cpu.pc, pc + (OPCODE_SIZE * 2));
 
     // Should not skip
     pc = cpu.pc;
     cpu.v[0] = 0x01;
     cpu.input.keys[0x01] = false;
-    cpu.run_opcode(0xE09E); // Look for press at key v[0] (1)
+    cpu.run_opcode(0xE09E, Some(false)); // Look for press at key v[0] (1)
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
 }
 
@@ -419,14 +419,14 @@ fn test_op_exa1() {
     let mut pc = cpu.pc;
     cpu.input.keys[0x00] = false;
     cpu.v[0] = 0x00; // Check for key 0
-    cpu.run_opcode(0xE0A1);
+    cpu.run_opcode(0xE0A1, Some(false));
     assert_eq!(cpu.pc, pc + (OPCODE_SIZE * 2));
 
     // Lets press a key and test it does not skip
     pc = cpu.pc;
     cpu.input.keys[0x01] = true;
     cpu.v[0] = 0x01; // Check for key 1
-    cpu.run_opcode(0xE0A1);
+    cpu.run_opcode(0xE0A1, Some(false));
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
 }
 
@@ -435,7 +435,7 @@ fn test_op_fx07() {
     let mut cpu = Cpu::new();
     let pc = cpu.pc;
     cpu.delay_timer = 123;
-    cpu.run_opcode(0xFA07);
+    cpu.run_opcode(0xFA07, Some(false));
     assert_eq!(cpu.pc, pc + OPCODE_SIZE);
     assert_eq!(cpu.v[0xA], 123);
 }
@@ -449,10 +449,10 @@ fn test_op_fx0a() {
     cpu.input.keys[2] = true;
 
     // Run this opcode and check v[x] for the key 1 after a tick()
-    cpu.run_opcode(0xF10A);
-    assert_eq!(cpu.input.read_keys, true);
-    assert_eq!(cpu.input.key_target, 0x01);
-    assert_eq!(cpu.pc, pc + OPCODE_SIZE);
+    cpu.run_opcode(0xF10A, Some(false));
     cpu.tick(false);
+    //assert_eq!(cpu.input.read_keys, true);
+    assert_eq!(cpu.input.key_target, 0x01);
+    assert_eq!(cpu.pc, pc + (OPCODE_SIZE * 2)); // Because tick() will run an opcode again
     assert_eq!(cpu.v[1], 2); // Key 2 (the pressed one) was stored in v[1]
 }

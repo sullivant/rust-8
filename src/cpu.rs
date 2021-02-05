@@ -141,8 +141,16 @@ impl Cpu {
     }
 
     // TODO: Output state control for sound/graphics
-    // TODO: Read keypad on each tick
     pub fn tick(&mut self, dump_regs: bool) {
+        // Store the key pressed into the expected key_target
+        for i in 0..self.input.keys.len() {
+            if self.input.keys[i] {
+                self.input.read_keys = false;
+                self.v[self.input.key_target] = i as u8;
+                break;
+            }
+        }
+
         // Decrement the delay counter if it is above zero
         self.delay_timer = if self.delay_timer > 0 {
             self.delay_timer - 1
@@ -151,13 +159,13 @@ impl Cpu {
         };
 
         let opcode = self.read_word(dump_regs);
-        self.run_opcode(opcode, dump_regs);
+        self.run_opcode(opcode, Some(dump_regs));
         if dump_regs {
             self.dump_regs();
         }
     }
 
-    pub fn run_opcode(&mut self, opcode: u16, dump_regs: bool) {
+    pub fn run_opcode(&mut self, opcode: u16, dump_regs: Option<bool>) {
         // Break the opcode into its distinct parts so we can determine what
         // to do with what and where
         let nibbles = (
@@ -172,7 +180,7 @@ impl Cpu {
         let y = nibbles.2 as usize;
         let n = nibbles.3 as usize;
 
-        if dump_regs {
+        if dump_regs.unwrap_or(false) {
             println!("Running opcode: {:X}", opcode);
             println!("  Nibbles: {:?}", nibbles);
             println!(
@@ -246,9 +254,8 @@ impl Cpu {
         ProgramCounter::Next
     }
 
-    // Jump program counter to address at stack[sp] then subtract 1 from sp
+    // Subtract 1 from sp and jump to address in stack
     fn op_00ee(&mut self) -> ProgramCounter {
-        //let p = self.sp;
         self.sp -= 1;
         ProgramCounter::Jump(self.stack[self.sp])
     }
