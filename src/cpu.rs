@@ -2,7 +2,6 @@ use super::{C8_HEIGHT, C8_WIDTH, OPCODE_SIZE};
 use crate::fonts::FONT_SET;
 use rand::Rng;
 use std::fs::File;
-use std::io;
 use std::io::prelude::*;
 
 enum ProgramCounter {
@@ -442,7 +441,6 @@ impl Cpu {
     // Skip next instruction if key with the value of Vx is pressed.
     fn op_ex9e(&mut self, x: usize) -> ProgramCounter {
         if self.input.keys[self.v[x] as usize] {
-            println!("Skipping if key at v[{}] is pressed", x);
             return ProgramCounter::Skip;
         }
 
@@ -452,7 +450,6 @@ impl Cpu {
     // Skip next instruction if key with the value of Vx is not pressed.
     fn op_exa1(&mut self, x: usize) -> ProgramCounter {
         if !self.input.keys[self.v[x] as usize] {
-            println!("Skipping if key at v[{}] is not pressed", x);
             return ProgramCounter::Skip;
         }
         ProgramCounter::Next
