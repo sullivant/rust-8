@@ -10,6 +10,7 @@ use piston::event_loop::{EventSettings, Events};
 use piston::input::*;
 use piston::window::WindowSettings;
 use std::time::Duration;
+use structopt::StructOpt;
 
 mod cpu;
 mod display;
@@ -23,6 +24,12 @@ pub const OPCODE_SIZE: usize = 2;
 pub const C8_WIDTH: usize = 64;
 pub const C8_HEIGHT: usize = 32;
 pub const DISP_SCALE: f64 = 20.0;
+
+#[derive(StructOpt)]
+struct Cli {
+    /// The input rom to look for
+    rom: String,
+}
 
 pub struct App {
     gl: GlGraphics, // OpenGL drawing backend.
@@ -59,14 +66,21 @@ impl App {
             }
         }
     }
-
-    fn update(&mut self, args: &UpdateArgs) {}
 }
 
-//pub fn go() -> io::Result<()> {
 pub fn go() -> Result<(), String> {
+    let args = Cli::from_args();
+    let mut rom_file = "./data/".to_string();
+    rom_file += &args.rom;
+
     let mut cpu = Cpu::new();
-    cpu.load_rom("./data/PONG".to_string()).unwrap();
+    match cpu.load_rom(rom_file) {
+        Ok(_) => println!("Loaded rom file:"),
+        Err(err) => {
+            println!("Unable to load rom file: {}", err);
+            return Ok(());
+        }
+    }
 
     // Change this to OpenGL::V2_1 if not working.
     let opengl = OpenGL::V3_2;

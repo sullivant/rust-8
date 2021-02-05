@@ -23,7 +23,6 @@ impl Default for Input {
 }
 impl Input {
     pub fn new() -> Input {
-        // TODO: This will need to be mutable later
         Input {
             keys: [false; 16],
             read_keys: false,
@@ -79,7 +78,6 @@ impl Cpu {
             i: 0,
             pc: 0x200,
             gfx: [[0; C8_WIDTH]; C8_HEIGHT],
-            //gfx: [0; C8_WIDTH * C8_HEIGHT],
             gfx_updated: false,
             delay_timer: 0,
             sound_timer: 0,
@@ -118,7 +116,7 @@ impl Cpu {
     }
 
     // Load the rom into memory, with the 0x200 offset
-    pub fn load_rom(&mut self, file: String) -> io::Result<()> {
+    pub fn load_rom(&mut self, file: String) -> Result<(), std::io::Error> {
         let rom = File::open(file)?;
         for (i, b) in rom.bytes().enumerate() {
             self.memory[0x200 + i] = b.unwrap();
