@@ -71,7 +71,13 @@ pub fn go() -> Result<(), String> {
     let mut rom_file = "./data/".to_string();
     rom_file += &args.rom;
 
+    // Create a new game and run it.
+    let opengl = OpenGL::V3_2;
+    let mut events = Events::new(EventSettings::new());
+
+    // This processes opcodes, etc.
     let mut cpu = Cpu::new();
+
     match cpu.load_rom(rom_file.clone()) {
         Ok(_) => println!("Loaded rom file: {}", rom_file),
         Err(err) => {
@@ -80,10 +86,7 @@ pub fn go() -> Result<(), String> {
         }
     }
 
-    // Change this to OpenGL::V2_1 if not working.
-    let opengl = OpenGL::V3_2;
-
-    // Create a Glutin window.
+    // Create a window.
     let mut main_window: PistonWindow = WindowSettings::new(
         "rust-8",
         [C8_WIDTH as f64 * DISP_SCALE, C8_HEIGHT as f64 * DISP_SCALE],
@@ -93,13 +96,15 @@ pub fn go() -> Result<(), String> {
     .exit_on_esc(true)
     .build()
     .unwrap();
-
-    // Create a new game and run it.
     let mut app = App {
         gl: GlGraphics::new(opengl),
         vbuff: [[0; C8_WIDTH]; C8_HEIGHT],
     };
-    let mut events = Events::new(EventSettings::new());
+
+    let mut window: PistonWindow = WindowSettings::new("Hello Piston!", (640, 480))
+        .exit_on_esc(true)
+        .build()
+        .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
 
     while let Some(e) = events.next(&mut main_window) {
         cpu.tick(false);
