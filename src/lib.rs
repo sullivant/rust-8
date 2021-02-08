@@ -101,11 +101,6 @@ pub fn go() -> Result<(), String> {
         vbuff: [[0; C8_WIDTH]; C8_HEIGHT],
     };
 
-    let mut window: PistonWindow = WindowSettings::new("Hello Piston!", (640, 480))
-        .exit_on_esc(true)
-        .build()
-        .unwrap_or_else(|e| panic!("Failed to build PistonWindow: {}", e));
-
     while let Some(e) = events.next(&mut main_window) {
         cpu.tick(false);
 
