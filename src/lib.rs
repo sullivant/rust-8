@@ -16,7 +16,9 @@ pub use cpu::Cpu;
 pub const OPCODE_SIZE: usize = 2;
 pub const C8_WIDTH: usize = 64;
 pub const C8_HEIGHT: usize = 32;
-pub const DISP_SCALE: f32 = 20.0;
+pub const DISP_SCALE: f32 = 10.0;
+pub const DISP_WIDTH: f32 = 640.0;
+pub const DISP_HEIGHT: f32 = 320.0;
 
 #[derive(StructOpt)]
 struct Cli {
@@ -64,13 +66,11 @@ impl ggez::event::EventHandler for App {
         self.vbuff = self.cpu.gfx;
 
         // Let our family know we are ok
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 600));
         Ok(())
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, graphics::WHITE);
-        let mut mb = graphics::MeshBuilder::new();
         let black = graphics::Color::new(0.0, 0.0, 0.0, 1.0);
 
         for (y, row) in self.vbuff.iter().enumerate() {
@@ -80,17 +80,29 @@ impl ggez::event::EventHandler for App {
 
                 if *val == 1 {
                     // we need to draw a rectangle there
-                    mb.rectangle(
-                        DrawMode::fill(),
+
+                    // pub fn new_rectangle(
+                    //     ctx: &mut Context,
+                    //     mode: DrawMode,
+                    //     bounds: Rect,
+                    //     color: Color,
+                    // ) -> GameResult<Mesh> {
+                    //     let mut mb = MeshBuilder::new();
+                    //     let _ = mb.rectangle(mode, bounds, color);
+                    //     mb.build(ctx)
+                    // }
+
+                    let rectangle = graphics::Mesh::new_rectangle(
+                        ctx,
+                        graphics::DrawMode::fill(),
                         graphics::Rect::new(x, y, DISP_SCALE, DISP_SCALE),
                         black,
-                    );
+                    )?;
+                    graphics::draw(ctx, &rectangle, (ggez::mint::Point2 { x: 0.0, y: 0.0 },))?;
                 }
             }
         }
 
-        let mesh = mb.build(ctx)?;
-        graphics::draw(ctx, &mesh, (ggez::mint::Point2 { x: 0.0, y: 0.0 },))?;
         graphics::present(ctx)?;
         Ok(())
     }
@@ -102,7 +114,7 @@ pub fn go() -> GameResult {
         .window_setup(WindowSetup::default().title("CHIP8"))
         .window_mode(
             WindowMode::default()
-                .dimensions(640.0, 480.0)
+                .dimensions(DISP_WIDTH, DISP_HEIGHT)
                 .resizable(true),
         );
 
