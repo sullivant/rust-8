@@ -1,6 +1,7 @@
 use ggez::conf::{WindowMode, WindowSetup};
 use ggez::event;
-use ggez::graphics::{self, Color, DrawMode, Text};
+use ggez::graphics::{self, Color, DrawMode, MeshBuilder, Text};
+use ggez::nalgebra as na;
 use ggez::*;
 use std::time::Duration;
 use structopt::StructOpt;
@@ -30,6 +31,7 @@ pub struct App {
     // TODO: Make this actually be the cpu.gfx
     vbuff: [[u8; C8_WIDTH as usize]; C8_HEIGHT as usize],
     dt: std::time::Duration,
+    frames: usize,
     cpu: Cpu,
 }
 
@@ -38,6 +40,7 @@ impl App {
         let dt = std::time::Duration::new(0, 0);
         let vbuff = [[0; C8_WIDTH]; C8_HEIGHT];
         let mut cpu = Cpu::new();
+        let mut frames = 0;
 
         let args = Cli::from_args();
         let mut rom_file = "./data/".to_string();
@@ -49,7 +52,12 @@ impl App {
             }
         }
 
-        Ok(App { dt, vbuff, cpu })
+        Ok(App {
+            vbuff,
+            dt,
+            frames,
+            cpu,
+        })
     }
 }
 
@@ -57,14 +65,14 @@ impl ggez::event::EventHandler for App {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         // Frame count timer
         self.dt = timer::delta(ctx);
+        while timer::check_update_time(ctx, 80) {
+            // Tick the cpu
+            self.cpu.tick(false);
 
-        // Tick the cpu
-        self.cpu.tick(false);
-
-        // Copy the cpu's graphics array over to the rendering
-        // system's copy
-        self.vbuff = self.cpu.gfx;
-
+            // Copy the cpu's graphics array over to the rendering
+            // system's copy
+            self.vbuff = self.cpu.gfx;
+        }
         // Let our family know we are ok
         Ok(())
     }
@@ -72,6 +80,13 @@ impl ggez::event::EventHandler for App {
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, graphics::WHITE);
         let black = graphics::Color::new(0.0, 0.0, 0.0, 1.0);
+
+        let rectangle = graphics::Mesh::new_rectangle(
+            ctx,
+            graphics::DrawMode::fill(),
+            graphics::Rect::new(0.0, 0.0, DISP_SCALE, DISP_SCALE),
+            black,
+        )?;
 
         for (y, row) in self.vbuff.iter().enumerate() {
             for (x, val) in row.iter().enumerate() {
@@ -92,18 +107,18 @@ impl ggez::event::EventHandler for App {
                     //     mb.build(ctx)
                     // }
 
-                    let rectangle = graphics::Mesh::new_rectangle(
-                        ctx,
-                        graphics::DrawMode::fill(),
-                        graphics::Rect::new(x, y, DISP_SCALE, DISP_SCALE),
-                        black,
-                    )?;
-                    graphics::draw(ctx, &rectangle, (ggez::mint::Point2 { x: 0.0, y: 0.0 },))?;
+                    graphics::draw(ctx, &rectangle, (ggez::mint::Point2 { x: x, y: y },))?;
                 }
             }
         }
 
         graphics::present(ctx)?;
+
+        self.frames += 1;
+        if (self.frames % 100) == 0 {
+            println!("FPS: {}", ggez::timer::fps(ctx));
+        }
+
         Ok(())
     }
 }
