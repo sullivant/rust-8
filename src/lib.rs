@@ -1,6 +1,6 @@
 use ggez::conf::{WindowMode, WindowSetup};
 use ggez::event;
-use ggez::graphics::{self, Color, Text};
+use ggez::graphics::{self, Color, DrawParam, Text};
 use ggez::*;
 use glam::Vec2;
 use std::collections::BTreeMap;
@@ -32,7 +32,6 @@ pub struct App {
     // TODO: Make this actually be the cpu.gfx
     vbuff: [[u8; C8_WIDTH as usize]; C8_HEIGHT as usize],
     dt: std::time::Duration,
-    frames: usize,
     cpu: Cpu,
     cell: graphics::Mesh,
     texts: BTreeMap<&'static str, Text>,
@@ -42,7 +41,6 @@ impl App {
     fn new(ctx: &mut Context) -> GameResult<App> {
         let dt = std::time::Duration::new(0, 0);
         let vbuff = [[0; C8_WIDTH]; C8_HEIGHT];
-        let frames = 0;
         let black = graphics::Color::new(0.0, 0.0, 0.0, 1.0);
 
         // Generate our CPU
@@ -72,12 +70,12 @@ impl App {
         let mut texts = BTreeMap::new();
         // Store the text in `App`s map, for drawing in main loop.
         texts.insert("0_hello", text);
+        texts.insert("1_romname", Text::new(format!("ROM Loaded: {}", rom_file)));
 
         // Return a good version of the app object
         Ok(App {
             vbuff,
             dt,
-            frames,
             cpu,
             cell,
             texts,
@@ -129,21 +127,29 @@ impl ggez::event::EventHandler for App {
             }
         }
 
+        // Draw text objects/details
         // Create a little FPS text and display it in the info area
+        let mut height = DISP_HEIGHT; // Start at the top of the info area
+
+        // A FPS timer
         let fps = timer::fps(ctx);
         let fps_display = Text::new(format!("FPS: {}", fps));
-        graphics::draw(
+        graphics::draw(ctx, &fps_display, (Vec2::new(0.0, height), black))?;
+        height += 2.0 + fps_display.height(ctx) as f32; // Prep height to be used for mapped objs
+
+        // Draw the mapped text objects, too
+        for (_key, text) in &self.texts {
+            graphics::queue_text(ctx, text, Vec2::new(0.0, height), Some(black));
+            height += 2.0 + text.height(ctx) as f32;
+        }
+        graphics::draw_queued_text(
             ctx,
-            &fps_display,
-            (Vec2::new(0.0, DISP_HEIGHT + 10.0), black),
+            DrawParam::default(),
+            None,
+            graphics::FilterMode::Linear,
         )?;
 
         graphics::present(ctx)?;
-
-        // self.frames += 1;
-        // if (self.frames % 100) == 0 {
-        //     println!("FPS: {}", ggez::timer::fps(ctx));
-        // }
 
         Ok(())
     }
