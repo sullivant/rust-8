@@ -13,6 +13,7 @@ name = "lib"
 path = "src/lib.rs"
 
 [dependencies]
+alsa-sys = "0.3.1"
 rand = "0.7.0"
 structopt = "0.3.21"
 ggez = "0.5.1"
