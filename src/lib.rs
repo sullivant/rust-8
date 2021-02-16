@@ -1,9 +1,9 @@
 use ggez::conf::{WindowMode, WindowSetup};
 use ggez::event;
-use ggez::graphics::{self, Color, DrawMode, MeshBuilder, Text};
-use ggez::nalgebra as na;
+use ggez::graphics::{self, Color, Text};
 use ggez::*;
-use std::time::Duration;
+use glam::Vec2;
+use std::collections::BTreeMap;
 use structopt::StructOpt;
 
 mod cpu;
@@ -20,6 +20,7 @@ pub const C8_HEIGHT: usize = 32;
 pub const DISP_SCALE: f32 = 10.0;
 pub const DISP_WIDTH: f32 = 640.0;
 pub const DISP_HEIGHT: f32 = 320.0;
+pub const DISP_HEIGHT_INFO_AREA: f32 = 100.0; // The added bottom info area for text
 
 #[derive(StructOpt)]
 struct Cli {
@@ -33,15 +34,21 @@ pub struct App {
     dt: std::time::Duration,
     frames: usize,
     cpu: Cpu,
+    cell: graphics::Mesh,
+    texts: BTreeMap<&'static str, Text>,
 }
 
 impl App {
-    fn new() -> GameResult<App> {
+    fn new(ctx: &mut Context) -> GameResult<App> {
         let dt = std::time::Duration::new(0, 0);
         let vbuff = [[0; C8_WIDTH]; C8_HEIGHT];
-        let mut cpu = Cpu::new();
-        let mut frames = 0;
+        let frames = 0;
+        let black = graphics::Color::new(0.0, 0.0, 0.0, 1.0);
 
+        // Generate our CPU
+        let mut cpu = Cpu::new();
+
+        // Load the ROM intro the CPU
         let args = Cli::from_args();
         let mut rom_file = "./data/".to_string();
         rom_file += &args.rom;
@@ -52,11 +59,28 @@ impl App {
             }
         }
 
+        // Setup a "cell"/pixel for the engine to use
+        let cell = graphics::Mesh::new_rectangle(
+            ctx,
+            graphics::DrawMode::fill(),
+            graphics::Rect::new(0.0, 0.0, DISP_SCALE, DISP_SCALE),
+            black,
+        )?;
+
+        // Setup some texts for update later
+        let text = Text::new("Hello, World!");
+        let mut texts = BTreeMap::new();
+        // Store the text in `App`s map, for drawing in main loop.
+        texts.insert("0_hello", text);
+
+        // Return a good version of the app object
         Ok(App {
             vbuff,
             dt,
             frames,
             cpu,
+            cell,
+            texts,
         })
     }
 }
@@ -81,13 +105,6 @@ impl ggez::event::EventHandler for App {
         graphics::clear(ctx, graphics::WHITE);
         let black = graphics::Color::new(0.0, 0.0, 0.0, 1.0);
 
-        let rectangle = graphics::Mesh::new_rectangle(
-            ctx,
-            graphics::DrawMode::fill(),
-            graphics::Rect::new(0.0, 0.0, DISP_SCALE, DISP_SCALE),
-            black,
-        )?;
-
         for (y, row) in self.vbuff.iter().enumerate() {
             for (x, val) in row.iter().enumerate() {
                 let x = (x as f32) * DISP_SCALE;
@@ -107,17 +124,26 @@ impl ggez::event::EventHandler for App {
                     //     mb.build(ctx)
                     // }
 
-                    graphics::draw(ctx, &rectangle, (ggez::mint::Point2 { x: x, y: y },))?;
+                    graphics::draw(ctx, &self.cell, (ggez::mint::Point2 { x: x, y: y },))?;
                 }
             }
         }
 
+        // Create a little FPS text and display it in the info area
+        let fps = timer::fps(ctx);
+        let fps_display = Text::new(format!("FPS: {}", fps));
+        graphics::draw(
+            ctx,
+            &fps_display,
+            (Vec2::new(0.0, DISP_HEIGHT + 10.0), black),
+        )?;
+
         graphics::present(ctx)?;
 
-        self.frames += 1;
-        if (self.frames % 100) == 0 {
-            println!("FPS: {}", ggez::timer::fps(ctx));
-        }
+        // self.frames += 1;
+        // if (self.frames % 100) == 0 {
+        //     println!("FPS: {}", ggez::timer::fps(ctx));
+        // }
 
         Ok(())
     }
@@ -129,7 +155,7 @@ pub fn go() -> GameResult {
         .window_setup(WindowSetup::default().title("CHIP8"))
         .window_mode(
             WindowMode::default()
-                .dimensions(DISP_WIDTH, DISP_HEIGHT)
+                .dimensions(DISP_WIDTH, DISP_HEIGHT + DISP_HEIGHT_INFO_AREA)
                 .resizable(true),
         );
 
@@ -137,7 +163,7 @@ pub fn go() -> GameResult {
     let (mut ctx, mut event_loop) = main_window.build()?;
 
     // Build our application
-    let mut app = App::new()?;
+    let mut app = App::new(&mut ctx)?;
 
     // Run the application
     event::run(&mut ctx, &mut event_loop, &mut app)
