@@ -4,6 +4,8 @@ use ggez::graphics::{self, Color, DrawParam, Text};
 use ggez::*;
 use glam::Vec2;
 use std::collections::BTreeMap;
+use std::env;
+use std::path;
 use structopt::StructOpt;
 
 mod cpu;
@@ -20,7 +22,8 @@ pub const C8_HEIGHT: usize = 32;
 pub const DISP_SCALE: f32 = 10.0;
 pub const DISP_WIDTH: f32 = 640.0;
 pub const DISP_HEIGHT: f32 = 320.0;
-pub const DISP_HEIGHT_INFO_AREA: f32 = 100.0; // The added bottom info area for text
+pub const DISP_HEIGHT_INFO_AREA: f32 = 200.0; // The added bottom info area for text
+pub const DISP_WIDTH_INFO_AREA: f32 = 300.0; // The added right side info area for text
 
 #[derive(StructOpt)]
 struct Cli {
@@ -29,8 +32,6 @@ struct Cli {
 }
 
 pub struct App {
-    // TODO: Make this actually be the cpu.gfx
-    vbuff: [[u8; C8_WIDTH as usize]; C8_HEIGHT as usize],
     dt: std::time::Duration,
     cpu: Cpu,
     cell: graphics::Mesh,
@@ -40,7 +41,6 @@ pub struct App {
 impl App {
     fn new(ctx: &mut Context) -> GameResult<App> {
         let dt = std::time::Duration::new(0, 0);
-        let vbuff = [[0; C8_WIDTH]; C8_HEIGHT];
         let black = graphics::Color::new(0.0, 0.0, 0.0, 1.0);
 
         // Generate our CPU
@@ -66,15 +66,12 @@ impl App {
         )?;
 
         // Setup some texts for update later
-        let text = Text::new("Hello, World!");
         let mut texts = BTreeMap::new();
         // Store the text in `App`s map, for drawing in main loop.
-        texts.insert("0_hello", text);
         texts.insert("1_romname", Text::new(format!("ROM Loaded: {}", rom_file)));
 
         // Return a good version of the app object
         Ok(App {
-            vbuff,
             dt,
             cpu,
             cell,
@@ -87,13 +84,17 @@ impl ggez::event::EventHandler for App {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         // Frame count timer
         self.dt = timer::delta(ctx);
-        while timer::check_update_time(ctx, 80) {
+        while timer::check_update_time(ctx, 60) {
             // Tick the cpu
             self.cpu.tick(false);
 
-            // Copy the cpu's graphics array over to the rendering
-            // system's copy
-            self.vbuff = self.cpu.gfx;
+            // Update the text array of mapped objects with fresh values
+            self.texts.insert(
+                "2_opcode",
+                Text::new(format!("OP:{:?} PC:{:?}", self.cpu.opcode, self.cpu.pc)),
+            );
+            self.texts
+                .insert("3_pc", Text::new(format!("pc:{:?}", self.cpu.pc)));
         }
         // Let our family know we are ok
         Ok(())
@@ -103,26 +104,13 @@ impl ggez::event::EventHandler for App {
         graphics::clear(ctx, graphics::WHITE);
         let black = graphics::Color::new(0.0, 0.0, 0.0, 1.0);
 
-        for (y, row) in self.vbuff.iter().enumerate() {
+        for (y, row) in self.cpu.gfx.iter().enumerate() {
             for (x, val) in row.iter().enumerate() {
                 let x = (x as f32) * DISP_SCALE;
                 let y = (y as f32) * DISP_SCALE;
 
                 if *val == 1 {
-                    // we need to draw a rectangle there
-
-                    // pub fn new_rectangle(
-                    //     ctx: &mut Context,
-                    //     mode: DrawMode,
-                    //     bounds: Rect,
-                    //     color: Color,
-                    // ) -> GameResult<Mesh> {
-                    //     let mut mb = MeshBuilder::new();
-                    //     let _ = mb.rectangle(mode, bounds, color);
-                    //     mb.build(ctx)
-                    // }
-
-                    graphics::draw(ctx, &self.cell, (ggez::mint::Point2 { x: x, y: y },))?;
+                    graphics::draw(ctx, &self.cell, (ggez::mint::Point2 { x, y },))?;
                 }
             }
         }
@@ -131,17 +119,18 @@ impl ggez::event::EventHandler for App {
         // Create a little FPS text and display it in the info area
         let mut height = DISP_HEIGHT; // Start at the top of the info area
 
-        // A FPS timer
+        // A FPS timer (not a mapped obj because it changes rapidly)
         let fps = timer::fps(ctx);
         let fps_display = Text::new(format!("FPS: {}", fps));
         graphics::draw(ctx, &fps_display, (Vec2::new(0.0, height), black))?;
-        height += 2.0 + fps_display.height(ctx) as f32; // Prep height to be used for mapped objs
 
         // Draw the mapped text objects, too
-        for (_key, text) in &self.texts {
+        height += 2.0 + fps_display.height(ctx) as f32; // Prep height to be used for mapped objs
+        for text in self.texts.values() {
             graphics::queue_text(ctx, text, Vec2::new(0.0, height), Some(black));
             height += 2.0 + text.height(ctx) as f32;
         }
+
         graphics::draw_queued_text(
             ctx,
             DrawParam::default(),
@@ -157,16 +146,26 @@ impl ggez::event::EventHandler for App {
 
 pub fn go() -> GameResult {
     // Create a window.
-    let main_window = ggez::ContextBuilder::new("main_window", "Thomas")
-        .window_setup(WindowSetup::default().title("CHIP8"))
-        .window_mode(
-            WindowMode::default()
-                .dimensions(DISP_WIDTH, DISP_HEIGHT + DISP_HEIGHT_INFO_AREA)
-                .resizable(true),
-        );
+    let mut main_window = ContextBuilder::new("mygame", "myname");
+    if let Ok(manifest_dir) = env::var("CARGO_MANIFEST_DIR") {
+        let path = path::PathBuf::from(manifest_dir).join("resources");
+        println!("Adding 'resources' path {:?}", path);
+        main_window = main_window.add_resource_path(path);
+    }
+
+    // let main_window = ggez::ContextBuilder::new("main_window", "Thomas")
+    //     .window_setup(WindowSetup::default().title("CHIP8"))
+    //     .window_mode(
+    //         WindowMode::default()
+    //             .dimensions(
+    //                 DISP_WIDTH + DISP_WIDTH_INFO_AREA,
+    //                 DISP_HEIGHT + DISP_HEIGHT_INFO_AREA,
+    //             )
+    //             .resizable(true),
+    //     );
 
     // Build our context
-    let (mut ctx, mut event_loop) = main_window.build()?;
+    let (mut ctx, mut event_loop) = main_window.build().unwrap();
 
     // Build our application
     let mut app = App::new(&mut ctx)?;
