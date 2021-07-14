@@ -96,10 +96,11 @@ impl Cpu {
     }
 
     #[allow(dead_code)]
-    pub fn dump_regs(&mut self) {
-        println!("  i: {:?}", self.i);
-        println!("  v: {:?}", self.v);
-        println!(" sp: {:?}", self.stack);
+    pub fn dump_regs(&mut self) -> String {
+        format!(
+            "opcode:{:?} i:{:?} v:{:?} sp:{:?}",
+            self.opcode, self.i, self.v, self.stack
+        )
     }
 
     #[allow(dead_code)]
@@ -158,9 +159,10 @@ impl Cpu {
         };
 
         let opcode = self.read_word(dump_regs);
+        self.opcode = opcode as u8;
         self.run_opcode(opcode, Some(dump_regs));
         if dump_regs {
-            self.dump_regs();
+            println!("Regs: {}", self.dump_regs());
         }
     }
 
@@ -168,9 +170,9 @@ impl Cpu {
         // Break the opcode into its distinct parts so we can determine what
         // to do with what and where
         let nibbles = (
-            (opcode & 0xF000) >> 12 as u8,
-            (opcode & 0x0F00) >> 8 as u8,
-            (opcode & 0x00F0) >> 4 as u8,
+            (opcode & 0xF000) >> 12_u8,
+            (opcode & 0x0F00) >> 8_u8,
+            (opcode & 0x00F0) >> 4_u8,
             (opcode & 0x000F) as u8,
         );
         let nnn = (opcode & 0x0FFF) as usize;
@@ -411,7 +413,7 @@ impl Cpu {
     // Set Vx = random byte AND kk.
     fn op_cxkk(&mut self, x: usize, kk: u8) -> ProgramCounter {
         let mut rng = rand::thread_rng();
-        let v = rng.gen_range(0 as u16, 256 as u16) as u8; // Inclusive of low, exclusive of high, so 0-255
+        let v = rng.gen_range(0_u16, 256_u16) as u8; // Inclusive of low, exclusive of high, so 0-255
         self.v[x] = kk.wrapping_add(v);
 
         ProgramCounter::Next
@@ -483,7 +485,7 @@ impl Cpu {
 
     // I = I + Vx
     fn op_fx1e(&mut self, x: usize) -> ProgramCounter {
-        self.i = self.i + self.v[x] as usize;
+        self.i += self.v[x] as usize;
         ProgramCounter::Next
     }
 
