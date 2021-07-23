@@ -28,10 +28,16 @@ impl Input {
             key_target: 0,
         }
     }
-    pub fn dump_keys(&self) {
-        for (i, r) in self.keys.iter().enumerate() {
-            println!("key {:X}: {}", i, r);
+    pub fn dump_keys(&self) -> String {
+        let mut k: [usize; 16] = [0; 16];
+        for (i, x) in self.keys.iter().enumerate() {
+            k[i] = match x {
+                false => 0,
+                true => 1,
+            };
         }
+
+        format!("{:?}", k)
     }
 }
 
@@ -60,6 +66,9 @@ pub struct Cpu {
 
     // Input and keyboard
     pub input: Input,
+
+    // A pause tick flag for single stepping
+    pub pause_tick: bool,
 }
 
 impl Default for Cpu {
@@ -83,24 +92,15 @@ impl Cpu {
             stack: [0; 16],
             sp: 0,
             input: Input::new(),
+            pause_tick: true,
         };
         cpu.load_fonts();
         cpu
     }
 
-    #[allow(dead_code)]
-    pub fn dump_ram(&mut self) {
-        for (i, r) in self.memory.iter().enumerate() {
-            println!("{:X}: {:X}", i, r);
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn dump_regs(&mut self) -> String {
-        format!(
-            "opcode:{:?} i:{:?} v:{:?} sp:{:?}",
-            self.opcode, self.i, self.v, self.stack
-        )
+    pub fn dump_ram(&mut self) -> String {
+        let strs: Vec<String> = self.memory.iter().map(|b| format!("{:02X}", b)).collect();
+        strs.join(" ")
     }
 
     #[allow(dead_code)]
@@ -126,28 +126,20 @@ impl Cpu {
     }
 
     // Reads a word from memory located at program counter
-    pub fn read_word(&mut self, dump_regs: bool) -> u16 {
-        let hi = self.memory[self.pc] as u16;
-        let lo = self.memory[self.pc + 1] as u16;
-        let w: u16 = (u16::from(self.memory[self.pc]) << 8) | u16::from(self.memory[self.pc + 1]);
-        if dump_regs {
-            println!(
-                "Instruction read {:#X}:{:#X}: hi:{:#X} lo:{:#X} ",
-                self.pc, w, hi, lo
-            );
-        }
-
-        w
+    pub fn read_word(&mut self) -> u16 {
+        (u16::from(self.memory[self.pc]) << 8) | u16::from(self.memory[self.pc + 1])
     }
 
     // TODO: Output state control for sound/graphics
     pub fn tick(&mut self, dump_regs: bool) {
         // Store the key pressed into the expected key_target
-        for i in 0..self.input.keys.len() {
-            if self.input.keys[i] {
-                self.input.read_keys = false;
-                self.v[self.input.key_target] = i as u8;
-                break;
+        if self.input.read_keys {
+            for i in 0..self.input.keys.len() {
+                if self.input.keys[i] {
+                    self.input.read_keys = false;
+                    self.v[self.input.key_target] = i as u8;
+                    break;
+                }
             }
         }
 
@@ -158,12 +150,9 @@ impl Cpu {
             0
         };
 
-        let opcode = self.read_word(dump_regs);
+        let opcode = self.read_word();
         self.opcode = opcode as u8;
         self.run_opcode(opcode, Some(dump_regs));
-        if dump_regs {
-            println!("Regs: {}", self.dump_regs());
-        }
     }
 
     pub fn run_opcode(&mut self, opcode: u16, dump_regs: Option<bool>) {

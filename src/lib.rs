@@ -1,6 +1,8 @@
 use ggez::conf::{WindowMode, WindowSetup};
-use ggez::event;
+//use ggez::event;
+use ggez::event::{self, EventHandler, KeyCode, KeyMods};
 use ggez::graphics::{self, Color, DrawParam, Text};
+use ggez::input::keyboard;
 use ggez::*;
 use glam::Vec2;
 use std::collections::BTreeMap;
@@ -36,6 +38,7 @@ pub struct App {
     cpu: Cpu,
     cell: graphics::Mesh,
     texts: BTreeMap<&'static str, Text>,
+    tick_once: bool,
 }
 
 impl App {
@@ -76,7 +79,27 @@ impl App {
             cpu,
             cell,
             texts,
+            tick_once: false,
         })
+    }
+
+    // Just updates the informational text to display in debug mode
+    fn update_info_text(&mut self) {
+        self.texts.insert(
+            "2_opcode",
+            Text::new(format!("OP:{:#04x}", self.cpu.opcode)),
+        );
+        self.texts
+            .insert("3_pc", Text::new(format!("PC:{:?}", self.cpu.pc)));
+        self.texts.insert(
+            "4_kt",
+            Text::new(format!(
+                "rt/kt:{:?}/{:?} : {:?}",
+                self.cpu.input.read_keys,
+                self.cpu.input.key_target,
+                self.cpu.input.dump_keys()
+            )),
+        );
     }
 }
 
@@ -86,18 +109,39 @@ impl ggez::event::EventHandler for App {
         self.dt = timer::delta(ctx);
         while timer::check_update_time(ctx, 60) {
             // Tick the cpu
-            self.cpu.tick(false);
-
+            // If we are not in single tick mode (pause_tick = true) then tick away
+            if !self.cpu.pause_tick {
+                self.cpu.tick(false);
+            } else {
+                // We are single ticking, wait until we have a space.
+                if self.tick_once {
+                    self.cpu.tick(false);
+                    self.tick_once = false;
+                }
+            }
             // Update the text array of mapped objects with fresh values
-            self.texts.insert(
-                "2_opcode",
-                Text::new(format!("OP:{:?} PC:{:?}", self.cpu.opcode, self.cpu.pc)),
-            );
-            self.texts
-                .insert("3_pc", Text::new(format!("pc:{:?}", self.cpu.pc)));
+            self.update_info_text();
         }
         // Let our family know we are ok
         Ok(())
+    }
+
+    fn key_down_event(&mut self, ctx: &mut Context, key: KeyCode, mods: KeyMods, _: bool) {
+        println!("K:{:?} mods:{:?}", key, mods);
+        match key {
+            // Quit if Shift+Ctrl+Q is pressed.
+            KeyCode::Escape => {
+                println!("Terminating!");
+                event::quit(ctx);
+            }
+            KeyCode::F1 => {
+                self.cpu.pause_tick = if self.cpu.pause_tick { false } else { true };
+            }
+            KeyCode::Space => {
+                self.tick_once = true;
+            }
+            _ => (),
+        }
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
