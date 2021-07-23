@@ -45,6 +45,7 @@ pub struct Cpu {
     // Memory
     pub memory: [u8; 4096],
     pub opcode: u8,
+    pub next_opcode: u16,
 
     // Registers
     pub v: [u8; 16],
@@ -82,6 +83,7 @@ impl Cpu {
         let mut cpu = Cpu {
             memory: [0; 4096],
             opcode: 0x00,
+            next_opcode: 0x00,
             v: [0; 16],
             i: 0,
             pc: 0x200,
@@ -153,9 +155,10 @@ impl Cpu {
         let opcode = self.read_word();
         self.opcode = opcode as u8;
         self.run_opcode(opcode, Some(dump_regs));
+        self.next_opcode = self.read_word();
     }
 
-    pub fn run_opcode(&mut self, opcode: u16, dump_regs: Option<bool>) {
+    pub fn get_nibbles(&mut self, opcode: u16) -> (u16, u16, u16, u8) {
         // Break the opcode into its distinct parts so we can determine what
         // to do with what and where
         let nibbles = (
@@ -164,6 +167,14 @@ impl Cpu {
             (opcode & 0x00F0) >> 4_u8,
             (opcode & 0x000F) as u8,
         );
+
+        nibbles
+    }
+
+    pub fn run_opcode(&mut self, opcode: u16, dump_regs: Option<bool>) {
+        // Break the opcode into its distinct parts so we can determine what
+        // to do with what and where
+        let nibbles = self.get_nibbles(opcode);
         let nnn = (opcode & 0x0FFF) as usize;
         let kk = (opcode & 0x00FF) as u8;
         let x = nibbles.1 as usize;

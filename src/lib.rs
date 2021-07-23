@@ -5,6 +5,7 @@ use ggez::graphics::{self, Color, DrawParam, Text};
 use ggez::input::keyboard;
 use ggez::*;
 use glam::Vec2;
+use nalgebra as na;
 use std::collections::BTreeMap;
 use std::env;
 use std::path;
@@ -26,6 +27,8 @@ pub const DISP_WIDTH: f32 = 640.0;
 pub const DISP_HEIGHT: f32 = 320.0;
 pub const DISP_HEIGHT_INFO_AREA: f32 = 200.0; // The added bottom info area for text
 pub const DISP_WIDTH_INFO_AREA: f32 = 300.0; // The added right side info area for text
+
+type Point2 = na::Point2<f32>;
 
 #[derive(StructOpt)]
 struct Cli {
@@ -89,10 +92,27 @@ impl App {
             "2_opcode",
             Text::new(format!("OP:{:#04x}", self.cpu.opcode)),
         );
-        self.texts
-            .insert("3_pc", Text::new(format!("PC:{:?}", self.cpu.pc)));
+
+        let nibbles = self.cpu.get_nibbles(self.cpu.opcode as u16);
+        let nnn = (self.cpu.opcode as u16 & 0x0FFF) as usize;
+        let kk = (self.cpu.opcode as u16 & 0x00FF) as u8;
+        let x = nibbles.1 as usize;
+        let y = nibbles.2 as usize;
+        let n = nibbles.3 as usize;
+
         self.texts.insert(
-            "4_kt",
+            "3_pc",
+            Text::new(format!(
+                "n:{:#04x},{:#04x},{:#04x},{:#04x} nnn:{:?} kk:{:?} x,y,n: {:?},{:?},{:?} I:{:?} PC:{:?}",
+                nibbles.0, nibbles.1,nibbles.2,nibbles.3, nnn, kk, x, y, n, self.cpu.i, self.cpu.pc
+            )),
+        );
+        self.texts.insert(
+            "4_v",
+            Text::new(format!("v:{:?} v[x]:{:?}", self.cpu.v, self.cpu.v[x])),
+        );
+        self.texts.insert(
+            "5_kt",
             Text::new(format!(
                 "rt/kt:{:?}/{:?} : {:?}",
                 self.cpu.input.read_keys,
@@ -127,7 +147,6 @@ impl ggez::event::EventHandler for App {
     }
 
     fn key_down_event(&mut self, ctx: &mut Context, key: KeyCode, mods: KeyMods, _: bool) {
-        println!("K:{:?} mods:{:?}", key, mods);
         match key {
             // Quit if Shift+Ctrl+Q is pressed.
             KeyCode::Escape => {
@@ -163,7 +182,28 @@ impl ggez::event::EventHandler for App {
         // Create a little FPS text and display it in the info area
         let mut height = DISP_HEIGHT; // Start at the top of the info area
 
+        // Draw a border line above info area
+        let mut line = graphics::Mesh::new_line(
+            ctx,
+            &[
+                na::Point2::new(0.0, 0.0),
+                na::Point2::new(DISP_WIDTH + DISP_WIDTH_INFO_AREA, 0.0),
+            ],
+            2.0,
+            graphics::BLACK,
+        )?;
+        graphics::draw(ctx, &line, ([0.0, height],))?;
+
+        line = graphics::Mesh::new_line(
+            ctx,
+            &[na::Point2::new(0.0, 0.0), na::Point2::new(0.0, height)],
+            2.0,
+            graphics::BLACK,
+        )?;
+        graphics::draw(ctx, &line, ([DISP_WIDTH, 0.0],))?;
+
         // A FPS timer (not a mapped obj because it changes rapidly)
+        height += 2.0;
         let fps = timer::fps(ctx);
         let fps_display = Text::new(format!("FPS: {}", fps));
         graphics::draw(ctx, &fps_display, (Vec2::new(0.0, height), black))?;
@@ -174,7 +214,6 @@ impl ggez::event::EventHandler for App {
             graphics::queue_text(ctx, text, Vec2::new(0.0, height), Some(black));
             height += 2.0 + text.height(ctx) as f32;
         }
-
         graphics::draw_queued_text(
             ctx,
             DrawParam::default(),
