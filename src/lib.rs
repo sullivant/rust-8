@@ -114,10 +114,17 @@ impl App {
         self.texts.insert(
             "5_kt",
             Text::new(format!(
-                "rt/kt:{:?}/{:?} : {:?}",
+                "rk/kt:{:?}/{:?} : {:?}",
                 self.cpu.input.read_keys,
                 self.cpu.input.key_target,
                 self.cpu.input.dump_keys()
+            )),
+        );
+        self.texts.insert(
+            "6_timers",
+            Text::new(format!(
+                "dt: {:?} st: {:?}",
+                self.cpu.delay_timer, self.cpu.sound_timer
             )),
         );
     }
@@ -142,11 +149,39 @@ impl ggez::event::EventHandler for App {
             // Update the text array of mapped objects with fresh values
             self.update_info_text();
         }
+
         // Let our family know we are ok
         Ok(())
     }
+    fn key_up_event(&mut self, ctx: &mut Context, key: KeyCode, mods: KeyMods) {
+        let i = match key {
+            KeyCode::X => Some(0x0),
+            KeyCode::Key1 => Some(0x1),
+            KeyCode::Key2 => Some(0x2),
+            KeyCode::Key3 => Some(0x3),
+            KeyCode::Q => Some(0x4),
+            KeyCode::W => Some(0x5),
+            KeyCode::E => Some(0x6),
+            KeyCode::A => Some(0x7),
+            KeyCode::S => Some(0x8),
+            KeyCode::D => Some(0x9),
+            KeyCode::Z => Some(0xA),
+            KeyCode::C => Some(0xB),
+            KeyCode::Key4 => Some(0xC),
+            KeyCode::R => Some(0xD),
+            KeyCode::F => Some(0xE),
+            KeyCode::V => Some(0xF),
+            _ => None,
+        };
+
+        // Update the input array with the true value
+        if let Some(p) = i {
+            self.cpu.input.keys[p] = false
+        }
+    }
 
     fn key_down_event(&mut self, ctx: &mut Context, key: KeyCode, mods: KeyMods, _: bool) {
+        // Process our application control keys
         match key {
             // Quit if Shift+Ctrl+Q is pressed.
             KeyCode::Escape => {
@@ -160,6 +195,32 @@ impl ggez::event::EventHandler for App {
                 self.tick_once = true;
             }
             _ => (),
+        }
+
+        // Record the rest into the input array for the cpu
+        let i = match key {
+            KeyCode::X => Some(0x0),
+            KeyCode::Key1 => Some(0x1),
+            KeyCode::Key2 => Some(0x2),
+            KeyCode::Key3 => Some(0x3),
+            KeyCode::Q => Some(0x4),
+            KeyCode::W => Some(0x5),
+            KeyCode::E => Some(0x6),
+            KeyCode::A => Some(0x7),
+            KeyCode::S => Some(0x8),
+            KeyCode::D => Some(0x9),
+            KeyCode::Z => Some(0xA),
+            KeyCode::C => Some(0xB),
+            KeyCode::Key4 => Some(0xC),
+            KeyCode::R => Some(0xD),
+            KeyCode::F => Some(0xE),
+            KeyCode::V => Some(0xF),
+            _ => None,
+        };
+
+        // Update the input array with the true value
+        if let Some(p) = i {
+            self.cpu.input.keys[p] = true
         }
     }
 
@@ -192,8 +253,6 @@ impl ggez::event::EventHandler for App {
             2.0,
             graphics::BLACK,
         )?;
-        graphics::draw(ctx, &line, ([0.0, height],))?;
-
         line = graphics::Mesh::new_line(
             ctx,
             &[na::Point2::new(0.0, 0.0), na::Point2::new(0.0, height)],

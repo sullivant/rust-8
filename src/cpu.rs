@@ -44,8 +44,7 @@ impl Input {
 pub struct Cpu {
     // Memory
     pub memory: [u8; 4096],
-    pub opcode: u8,
-    pub next_opcode: u16,
+    pub opcode: u16,
 
     // Registers
     pub v: [u8; 16],
@@ -83,7 +82,6 @@ impl Cpu {
         let mut cpu = Cpu {
             memory: [0; 4096],
             opcode: 0x00,
-            next_opcode: 0x00,
             v: [0; 16],
             i: 0,
             pc: 0x200,
@@ -94,7 +92,7 @@ impl Cpu {
             stack: [0; 16],
             sp: 0,
             input: Input::new(),
-            pause_tick: true,
+            pause_tick: false,
         };
         cpu.load_fonts();
         cpu
@@ -153,9 +151,8 @@ impl Cpu {
         };
 
         let opcode = self.read_word();
-        self.opcode = opcode as u8;
+        self.opcode = opcode;
         self.run_opcode(opcode, Some(dump_regs));
-        self.next_opcode = self.read_word();
     }
 
     pub fn get_nibbles(&mut self, opcode: u16) -> (u16, u16, u16, u8) {
