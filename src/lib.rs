@@ -1,8 +1,8 @@
-use ggez::conf::{WindowMode, WindowSetup};
+//use ggez::conf::{WindowMode, WindowSetup};
 //use ggez::event;
 use ggez::event::{self, EventHandler, KeyCode, KeyMods};
 use ggez::graphics::{self, Color, DrawParam, Text};
-use ggez::input::keyboard;
+//use ggez::input::keyboard;
 use ggez::*;
 use glam::Vec2;
 use nalgebra as na;
@@ -28,7 +28,7 @@ pub const DISP_HEIGHT: f32 = 320.0;
 pub const DISP_HEIGHT_INFO_AREA: f32 = 200.0; // The added bottom info area for text
 pub const DISP_WIDTH_INFO_AREA: f32 = 300.0; // The added right side info area for text
 
-type Point2 = na::Point2<f32>;
+//type Point2 = na::Point2<f32>;
 
 #[derive(StructOpt)]
 struct Cli {
@@ -154,7 +154,7 @@ impl ggez::event::EventHandler for App {
                 event::quit(ctx);
             }
             KeyCode::F1 => {
-                self.cpu.pause_tick = if self.cpu.pause_tick { false } else { true };
+                self.cpu.pause_tick = !self.cpu.pause_tick;
             }
             KeyCode::Space => {
                 self.tick_once = true;

@@ -161,14 +161,12 @@ impl Cpu {
     pub fn get_nibbles(&mut self, opcode: u16) -> (u16, u16, u16, u8) {
         // Break the opcode into its distinct parts so we can determine what
         // to do with what and where
-        let nibbles = (
+        (
             (opcode & 0xF000) >> 12_u8,
             (opcode & 0x0F00) >> 8_u8,
             (opcode & 0x00F0) >> 4_u8,
             (opcode & 0x000F) as u8,
-        );
-
-        nibbles
+        )
     }
 
     pub fn run_opcode(&mut self, opcode: u16, dump_regs: Option<bool>) {
