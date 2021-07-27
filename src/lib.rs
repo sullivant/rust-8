@@ -26,7 +26,6 @@ pub const DISP_SCALE: f32 = 10.0;
 pub const DISP_WIDTH: f32 = 640.0;
 pub const DISP_HEIGHT: f32 = 320.0;
 pub const DISP_HEIGHT_INFO_AREA: f32 = 200.0; // The added bottom info area for text
-pub const DISP_WIDTH_INFO_AREA: f32 = 300.0; // The added right side info area for text
 
 //type Point2 = na::Point2<f32>;
 
@@ -246,13 +245,11 @@ impl ggez::event::EventHandler for App {
         // Draw a border line above info area
         let mut line = graphics::Mesh::new_line(
             ctx,
-            &[
-                na::Point2::new(0.0, 0.0),
-                na::Point2::new(DISP_WIDTH + DISP_WIDTH_INFO_AREA, 0.0),
-            ],
+            &[na::Point2::new(0.0, 0.0), na::Point2::new(DISP_WIDTH, 0.0)],
             2.0,
             graphics::BLACK,
         )?;
+        graphics::draw(ctx, &line, ([0.0, height],))?;
         line = graphics::Mesh::new_line(
             ctx,
             &[na::Point2::new(0.0, 0.0), na::Point2::new(0.0, height)],
