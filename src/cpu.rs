@@ -462,7 +462,6 @@ impl Cpu {
     fn op_fx0a(&mut self, x: usize) -> ProgramCounter {
         self.input.read_keys = true; // Tell tick() to read a key
         self.input.key_target = x; // And store it into V[x]
-        println!("~~ Reading keys and storing in v[{}]", x);
         ProgramCounter::Next
     }
 
